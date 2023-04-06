@@ -16,9 +16,9 @@
 
 После того, как игрок закончит кастомизацию персонажа и нажмет на кнопку перехода к следующему этапу, отдельно выбранные им до этого элементы внешнего вида будут собираться в листы спрайтов персонажа (с помощью библиотеки pillow).
 
-![Примерный макет экрана кастомизации персонажа](https://github.com/katykool/test/blob/main/choosing_sprite_design.jpeg?raw=true)
+![Примерный макет экрана кастомизации персонажа](https://github.com/thevicsol/fickle-student-sim/blob/readme-media/readme_media/charactercreatefickle.png?raw=true)
 
-![Схематичная демонстрация принципа генерации листов спрайтов](https://github.com/katykool/test/blob/main/model_of_choosing.jpeg?raw=true)
+![Схематичная демонстрация принципа генерации листов спрайтов](https://github.com/thevicsol/fickle-student-sim/blob/readme-media/readme_media/spritesgeneration.png?raw=true)
 
 
 ## Карта
@@ -28,7 +28,7 @@
 
 Перспектива изометрическая. Позволяет передать больше деталей и выглядит в целом эстетичнее и приятнее на глаз. Планируется сделать возможность ходить не только вверх/вниз/вправо/влево, но и под углом; добавить для каждого спрайта 2 дополнительных варианта.
 
-![enter image description here](https://github.com/katykool/test/blob/main/perspective.jpeg?raw=true)
+![enter image description here](https://github.com/thevicsol/fickle-student-sim/blob/readme-media/readme_media/cameraangles.png?raw=true)
 
 Карта будет разделена на комнаты, соответствующие аудиториям, коридорам, лестницам и т.д. В каждый момент времени будут отображаться только комната, в которой находится игрок, и соседние с ней комнаты (если это окажется очень ресурсозатратно, можно оставить только текущую комнату без соседних).
 
