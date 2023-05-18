@@ -551,7 +551,7 @@ def draw_time():
 
     def money(amount):
         global money_wallet
-        wallet = pygame.image.load("timeneeds/17.png")
+        wallet = pygame.image.load("sprites/wallet.png")
         wallet_surf = pygame.transform.scale(wallet, (50, 50))
         wallet_rect = wallet.get_rect(topleft=(700, 576))
         screen.blit(wallet_surf, wallet_rect)
