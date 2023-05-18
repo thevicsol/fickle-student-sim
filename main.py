@@ -120,7 +120,6 @@ screen = pygame.display.set_mode(size)
 pygame.display.set_caption("Creating Sprite")
 font = pygame.font.SysFont("comicsansms", 25)
 
-
 all_sprites_list = pygame.sprite.Group()
 map = pygame.sprite.Group()  # полы комнат
 walls = pygame.sprite.Group()  # стены
@@ -186,6 +185,7 @@ def scene_hse():
     clock = pygame.time.Clock()
 
     while exit:
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit = False
@@ -383,10 +383,6 @@ def fullness(amount):
         current_hunger = max_hunger
 
 
-seasons_box = ["Весна", "Лето", "Осень", "Зима"]
-weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-
-
 def seasons():
     pass
 
@@ -394,57 +390,37 @@ def seasons():
 def update():
     health()
 
-
-frame_count = 0
-frame_rate = 60
-start_time = 90
-
-current_season = 0
-current_week = 0
+current_module = 1
+weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+minute = 0
+second = 0
 current_day = 0
-current_hour = 0
-current_minute = 0
 
-clock = pygame.time.Clock()
-dt = clock.tick() / 1000
-previous_time = time.time()
 
 def draw_time():
-    global current_day, current_week, current_season, current_minute, current_hour, weekdays_box, seasons_box, frame_count, start_time
-    time_bar = pygame.image.load("timeneeds/Item3.png")
-    time_bar_surface = pygame.transform.scale(time_bar, (150, 100))
-    time_bar_rect = time_bar_surface.get_rect(center=(80, 570))
-    screen.blit(time_bar_surface, time_bar_rect)
-    current_minute += 1
-    if current_minute >= 60:
-        current_minute = 0
-        current_hour += 1
-        if current_hour >= 24:
-            current_hour = 0
-            current_day += 1
-            if current_day >= 7:
-                current_day = 0
-                current_week += 1
-                if current_week >= 4:
-                    current_week = 0
-                    current_season += 1
-                    if current_season >= 4:
-                        current_season = 0
-
-
-    output_string = "{0:02}:{1:02}".format(current_hour, current_minute)
+    global minute, second
+    time1 = (pygame.time.get_ticks() // 1000)  # получение текущего времени и перевод в секунды
+    minute = (time1 // 24) % 24  # количество минут = часы в игре
+    second = time1 % 24  # количество секунд = минуты в игре
+    output_string = "{0:02}:{1:02}".format(minute, second)
     time_surface = font.render(output_string, True, pygame.Color("white"))
     time_rect = time_surface.get_rect(center=(80, 600))
-
     screen.blit(time_surface, time_rect)
-    date = f"{weekdays_box[current_day]}, {seasons_box[current_season]}"
-    week = f"{current_week}-я неделя"
+
+    global current_module, current_day
+
+    if time1 == 2400:
+        current_day += 1
+    if current_day == 7:
+        current_day = 0
+        current_module += 1
+
+    if current_module == 5:
+        current_module = 1
+    date = f"{weekdays_box[current_day]}, {current_module} модуль"
     date_text = font.render(date, True, pygame.Color("white"))
     date_rect = date_text.get_rect(center=(80, 540))
-    week_text = font.render(week, True, pygame.Color("white"))
-    week_rect = week_text.get_rect(center=(80, 570))
     screen.blit(date_text, date_rect)
-    screen.blit(week_text, week_rect)
 
 
 def scene_home():  # сцена дома
