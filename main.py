@@ -459,7 +459,7 @@ socialize_bar_max_height = 15
 
 
 def health():
-    sleep_bar = pygame.image.load("sprites/Item5.png")
+    sleep_bar = pygame.image.load("timeneeds/Item5.png")
     sleep_bar_surface = pygame.transform.scale(sleep_bar, (200, 30))
     sleep_bar_rect = sleep_bar_surface.get_rect(center=(250, 540))
     screen.blit(sleep_bar_surface, sleep_bar_rect)
@@ -468,7 +468,7 @@ def health():
     health_bar_rect = pygame.Rect(bar_topleft, (current_bar_width, bar_height))
     pygame.draw.rect(screen, "#4682B4", health_bar_rect, border_radius=15)
 
-    hunger_bar = pygame.image.load("sprites/Item5.png")
+    hunger_bar = pygame.image.load("timeneeds/Item5.png")
     hunger_bar_surface = pygame.transform.scale(hunger_bar, (200, 30))
     hunger_bar_rect = hunger_bar_surface.get_rect(center=(250, 570))
     screen.blit(hunger_bar_surface, hunger_bar_rect)
@@ -477,7 +477,7 @@ def health():
     hunger_bar2_rect = pygame.Rect(hunger_bar_topleft, (current_hunger_width, hunger_bar_max_height))
     pygame.draw.rect(screen, "#4682B4", hunger_bar2_rect, border_radius=15)
 
-    socialize_bar = pygame.image.load("sprites/Item5.png")
+    socialize_bar = pygame.image.load("timeneeds/Item5.png")
     socialize_bar_surface = pygame.transform.scale(socialize_bar, (200, 30))
     socialize_bar_rect = socialize_bar_surface.get_rect(center=(250, 600))
     screen.blit(socialize_bar_surface, socialize_bar_rect)
@@ -519,10 +519,6 @@ def fullness(amount):
         current_hunger = max_hunger
 
 
-def seasons():
-    pass
-
-
 def update():
     health()
 
@@ -532,10 +528,14 @@ weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 minute = 0
 second = 0
 current_day = 0
+money_wallet = 1894
+invincible = False
+invincibility = 400
+start_time_inv = 0
 
 
 def draw_time():
-    global minute, second
+    global minute, second, current_day, current_module
     time1 = (pygame.time.get_ticks() // 1000)  # получение текущего времени и перевод в секунды
     minute = (time1 // 24) % 24  # количество минут = часы в игре
     second = time1 % 24  # количество секунд = минуты в игре
@@ -544,20 +544,40 @@ def draw_time():
     time_rect = time_surface.get_rect(center=(80, 600))
     screen.blit(time_surface, time_rect)
 
-    global current_module, current_day
-
-    if time1 == 2400:
-        current_day += 1
-    if current_day == 7:
-        current_day = 0
-        current_module += 1
-
-    if current_module == 5:
-        current_module = 1
     date = f"{weekdays_box[current_day]}, {current_module} модуль"
     date_text = font.render(date, True, pygame.Color("white"))
     date_rect = date_text.get_rect(center=(80, 540))
     screen.blit(date_text, date_rect)
+
+    def money(amount):
+        global money_wallet
+        wallet = pygame.image.load("timeneeds/17.png")
+        wallet_surf = pygame.transform.scale(wallet, (50, 50))
+        wallet_rect = wallet.get_rect(topleft=(700, 576))
+        screen.blit(wallet_surf, wallet_rect)
+        money_amount_surf = font.render(str(amount), True, pygame.Color("white"))
+        money_amount_rect = money_amount_surf.get_rect(midleft=(wallet_rect.right - 70, 600))
+        screen.blit(money_amount_surf, money_amount_rect)
+    def tm():
+        global invincibility, invincible, start_time_inv, money_wallet, current_day, current_module
+        if not invincible:
+            if time1 == 10:
+                money_wallet += 1
+                invincible = True
+                start_time_inv = time1
+            if time1 == 2400:
+                current_day += 1
+            if current_day == 7:
+                current_day = 0
+                current_module += 1
+            if current_module == 5:
+                current_module = 1
+        if invincible:
+            current_time = time1
+            if current_time - start_time_inv >= invincibility:
+                invincible = False
+
+    money(money_wallet), tm()
 
 
 def schedule_main():
