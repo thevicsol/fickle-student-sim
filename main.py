@@ -537,8 +537,8 @@ start_time_inv = 0
 def draw_time():
     global minute, second, current_day, current_module
     time1 = (pygame.time.get_ticks() // 1000)  # получение текущего времени и перевод в секунды
-    minute = (time1 // 24) % 24  # количество минут = часы в игре
-    second = time1 % 24  # количество секунд = минуты в игре
+    minute = (time1 // 60) % 24  # количество минут = часы в игре
+    second = time1 % 60  # количество секунд = минуты в игре
     output_string = "{0:02}:{1:02}".format(minute, second)
     time_surface = font.render(output_string, True, pygame.Color("white"))
     time_rect = time_surface.get_rect(center=(80, 600))
