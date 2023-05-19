@@ -110,9 +110,9 @@ class NPC(Player):
             mapxys - словарь с текущими координатами комнат'''
             if self.curroom != self.prevroom and self.prevroom in mapxys.keys():
                 self.curdot = (mapxys[self.prevroom][0] + rooms[self.curroom][self.prevroom][0] +
-                                dots[self.path[self.ndot]][1][0],
-                                mapxys[self.prevroom][1] + rooms[self.curroom][self.prevroom][1] +
-                                dots[self.path[self.ndot]][1][1] - 73)
+                               dots[self.path[self.ndot]][1][0],
+                               mapxys[self.prevroom][1] + rooms[self.curroom][self.prevroom][1] +
+                               dots[self.path[self.ndot]][1][1] - 73)
             else:
                 self.curdot = (mapxys[self.curroom][0] + dots[self.path[self.ndot]][1][0],
                                mapxys[self.curroom][1] + dots[self.path[self.ndot]][1][1] - 73)
@@ -132,7 +132,7 @@ class NPC(Player):
                     self.rect.y -= speed
                     npcdir = npcdir + 'u'
             elif (self.rect.x - self.curdot[0] in (-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5) and
-                    self.rect.y - self.curdot[1] in (-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5)):
+                  self.rect.y - self.curdot[1] in (-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5)):
                 self.ndot = self.ndot + 1
                 self.prevndot = self.prevndot + 1
                 if self.ndot == len(self.path):
@@ -204,13 +204,189 @@ def mapupdate(id, neighbours):  # смена отображаемых комна
             objects.add(obj)
 
 
-pygame.init()
+class Timer:
+    def __init__(self, duration, func=None):
+        self.duration = duration
+        self.func = func
+        self.start_time = 0
+        self.active = False
 
+    def activate(self):
+        self.active = True
+        self.start_time = pygame.time.get_ticks()
+
+    def deactivate(self):
+        self.active = False
+        self.start_time = 0
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.start_time >= self.duration:
+            if self.func and self.start_time != 0:
+                self.func()
+            self.deactivate()
+
+class Shop:
+    def __init__(self, text, width, height, pos, elevation):
+        self.pressed = False
+        self.elevation = elevation
+        self.dynamic_elevation = elevation
+        self.original_y_pos = pos[1]
+
+
+        self.top_rect = pygame.Rect(pos, (width, height))
+        self.top_color = "#40E0D0"
+
+        self.bottom_rect = pygame.Rect(pos, (width, elevation))
+        self.bottom_color = "#DFFF00"
+
+        self.text_surf = font.render(text, True, "white")
+        self.text_rect = self.text_surf.get_rect(center=self.top_rect.center)
+    def draw(self):
+        self.top_rect.y = self.original_y_pos - self.dynamic_elevation
+        self.text_rect.center = self.top_rect.center
+
+        self.bottom_rect.midtop = self.top_rect.midtop
+        self.bottom_rect.height = self.top_rect.height + self.dynamic_elevation
+        pygame.draw.rect(screen, self.bottom_color, self.bottom_rect)
+        pygame.draw.rect(screen, self.top_color, self.top_rect)
+        screen.blit(self.text_surf, self.text_rect)
+        self.check_click()
+
+    def check_click(self):
+        global foodmenu
+        mouse_pos = pygame.mouse.get_pos()
+        if self.top_rect.collidepoint(mouse_pos):
+            if pygame.mouse.get_pressed()[0]:
+                self.dynamic_elevation = 0
+                self.top_color = "#FFBF00"
+
+                self.pressed = True
+            else:
+                self.dynamic_elevation = self.elevation
+                if self.pressed == True:
+                    self.pressed = False
+        else:
+            self.dynamic_elevation = self.elevation
+            self.top_color = "#40E0D0"
+
+
+
+
+class Food:
+    global food_options
+    def __init__(self):
+
+        self.display_surface = pygame.display.get_surface()
+
+        self.width = 400
+        self.space = 10
+        self.padding = 8
+        self.options = list(food_options.keys())
+        self.setup()
+        self.index = 0
+
+        self.timer = Timer(200)
+
+
+
+    def input(self):
+
+        keys = pygame.key.get_pressed()
+        self.timer.update()
+        if not self.timer.active:
+            if keys[pygame.K_UP]:
+                self.index -= 1
+                self.timer.activate()
+            if keys[pygame.K_DOWN]:
+                self.index += 1
+                self.timer.activate()
+        if keys[pygame.K_SPACE]:
+            global money_wallet
+            self.timer.activate()
+            cuurent_food = self.options[self.index]
+            price = prices[cuurent_food]
+            if money_wallet >= price:
+                money_wallet -= prices[cuurent_food]
+                fullness(10)
+
+
+
+
+
+        if self.index < 0:
+            self.index = len(self.options) - 1
+        if self.index > len(self.options) - 1:
+            self.index = 0
+
+    def setup(self):
+        self.text_surfs = []
+        self.total_height = 0
+        for item in self.options:
+            text_surf = font.render(item, True, pygame.Color("black"))
+            self.text_surfs.append(text_surf)
+            self.total_height += text_surf.get_height() + (self.padding * 2)
+        self.total_height += (len(self.text_surfs) - 1) * self.space
+        self.menu_top = HEIGHT / 2 - self.total_height / 2
+        self.main_rect = pygame.Rect(WIDTH / 2 - self.width / 2, self.menu_top, self.width, self.total_height)
+
+        self.image_food = pygame.image.load("sprites/06_apple_pie_dish.png")
+        self.image_food_2 = pygame.image.load("sprites/94_spaghetti.png")
+        self.image_food_3 = pygame.image.load("sprites/82_pizza_dish.png")
+        self.image_food_4 = pygame.image.load("sprites/33_curry_dish.png")
+        self.image_food_5 = pygame.image.load("sprites/banana.png")
+
+
+    def show_entry(self, text_surf, amount, top, selected):
+        bg_rect = pygame.Rect(self.main_rect.left, top, self.width, text_surf.get_height() + (self.padding * 2))
+        pygame.draw.rect(self.display_surface, "white", bg_rect, 0, 4)
+        text_rect = text_surf.get_rect(midleft=(self.main_rect.left + 20, bg_rect.centery))
+        self.display_surface.blit(text_surf, text_rect)
+        amount_surf = font.render(str(amount), True, "black")
+        amount_rect = amount_surf.get_rect(midright=(self.main_rect.right - 20, bg_rect.centery))
+        screen.blit(amount_surf, amount_rect)
+        if selected:
+            pygame.draw.rect(self.display_surface, "black", bg_rect, 4, 4)
+            if self.index == 1:
+                pos_rect = self.image_food.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food, pos_rect)
+            if self.index == 2:
+                pos_rect_2 = self.image_food_2.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_2, pos_rect_2)
+            if self.index == 0:
+                pos_rect_3 = self.image_food_3.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_3, pos_rect_3)
+            if self.index == 3:
+                pos_rect_4 = self.image_food_4.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_4, pos_rect_4)
+            if self.index == 4:
+                pos_rect_5 = self.image_food_5.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_5, pos_rect_5)
+
+
+    def update(self):
+        self.input()
+        for text_index, text_surf in enumerate(self.text_surfs):
+            top = self.main_rect.top + text_index * (text_surf.get_height() + (self.padding * 2) + self.space)
+            amount_list = list(food_options.values())
+            amount = amount_list[text_index]
+            self.show_entry(text_surf, amount, top, self.index == text_index)
+
+pygame.init()
 
 size = (WIDTH, HEIGHT)
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("fickle-student-sim")
 font = pygame.font.SysFont("comicsansms", 25)
+
+button = Shop("Магазин", 100, 40, (850, 580), 6)
+food_options = {"пицца": 150, "яблочный пирог": 120, "спагетти": 100, "карри": 100, "банан": 30}
+prices = {"пицца": 150, "яблочный пирог": 120, "спагетти": 100, "карри": 100, "банан": 30}
+foodmenu = Food()
+game_paused = False
+def toggle_menu():
+    global game_paused
+    game_paused = not game_paused
 
 all_sprites_list = pygame.sprite.Group()
 map = pygame.sprite.Group()  # полы комнат
@@ -253,16 +429,16 @@ def hse(firstid, firstcoords, wherefrom):
     collision.add(colleft)
     collright = CollisionMask((255, 0, 0), 'sprites/collright.png')
     collision.add(collright)
-        
+
     for sprite in collision:
         sprite.rect.x = 400
         sprite.rect.y = 240
     player.rect.x = 400
     player.rect.y = 240
-    
+
     background = pygame.image.load('sprites/bg.jpg').convert()
     background_rect = background.get_rect()
-    
+
     playergroup.add(player)
     room0 = RoomElement(firstid, None, None, rooms[firstid].keys())
     room0.rect.x = firstcoords[0]
@@ -286,7 +462,7 @@ def hse(firstid, firstcoords, wherefrom):
     pauseBtn.rect.y = 50
     sprites.add(pauseBtn)
     countseconds = 0
-    
+
     while exit:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -297,11 +473,13 @@ def hse(firstid, firstcoords, wherefrom):
                 elif event.key == pygame.K_h:
                     exit = False
                     home()
+                elif event.key == pygame.K_ESCAPE:
+                    toggle_menu()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pauseBtn.rect.collidepoint(event.pos):
                     exit = False
                     pause_menu(hse, (curroom, mapxys[curroom]))
-    
+
         front = pygame.sprite.Group()  # объекты, находящиеся перед игроком, следовательно, рисующиеся поверх него
         animatecount = animatecount + 1  # счетчик, отвечающий за скорость анимации - она сменяется каждый третий кадр
         if animatecount == 3:
@@ -309,89 +487,11 @@ def hse(firstid, firstcoords, wherefrom):
         keys = pygame.key.get_pressed()
         direction = ''  # нажатые пользователем стрелки
         cango = set()  # множество направлений, в которые может двигаться игрок в данный кадр
-        for room in map:  # если игрок с какой-то стороны заходит за пределы пола, он не может идти в этом направлении
-            roomgo = 0
-            if pygame.sprite.spritecollide(colleft, [room], False, pygame.sprite.collide_mask):
-                cango.add('r')  # проверяется, что игрок пересекается с полом, т.е. находится на нем
-                roomgo += 1
-            if pygame.sprite.spritecollide(collright, [room], False, pygame.sprite.collide_mask):
-                cango.add('l')
-                roomgo += 1
-            if pygame.sprite.spritecollide(colldown, [room], False, pygame.sprite.collide_mask):
-                cango.add('d')
-                roomgo += 1
-            if pygame.sprite.spritecollide(collup, [room], False, pygame.sprite.collide_mask):
-                cango.add('u')
-                roomgo += 1
-            if roomgo == 4:
-                if room.id != curroom:  # если комната не равна текущей, значит, игрок зашел в другую и надо обновить карту
-                    curroom = room.id
-                    mapupdate(curroom, room.neighbours.copy())  # передается id новой текущей комнаты и список соседних
-        for wall in walls:  # столкновение именно со стенами, где они есть - на тестовой карте это 2 дверных проема
-            if pygame.sprite.spritecollide(collright, [wall], False, pygame.sprite.collide_mask):
-                cango.discard('l')
-            if pygame.sprite.spritecollide(collupwall, [wall], False, pygame.sprite.collide_mask):
-                cango.discard('u')
-        mapxys = {}
-        if keys[pygame.K_LEFT] and 'r' in cango:  # перемещение игрока в тех направлениях, в которых можно двигаться
-            for sprite in map:
-                sprite.moveRight(5)
-            for sprite in walls:
-                sprite.moveRight(5)
-            for sprite in objects:
-                sprite.moveRight(5)
-            for sprite in studentgroup:
-                sprite.moveRight(5)
-            direction = 'r'
-        if keys[pygame.K_RIGHT] and 'l' in cango:
-            for sprite in map:
-                sprite.moveLeft(5)
-            for sprite in walls:
-                sprite.moveLeft(5)
-            for sprite in objects:
-                sprite.moveLeft(5)
-            for sprite in studentgroup:
-                sprite.moveLeft(5)
-            direction = 'l'
-        if keys[pygame.K_DOWN] and 'd' in cango:
-            for sprite in map:
-                sprite.moveBack(5)
-            for sprite in walls:
-                sprite.moveBack(5)
-            for sprite in objects:
-                sprite.moveBack(5)
-            for sprite in studentgroup:
-                sprite.moveBack(5)
-            direction += 'd'
-        if keys[pygame.K_UP] and 'u' in cango:
-            for sprite in map:
-                sprite.moveForward(5)
-            for sprite in walls:
-                sprite.moveForward(5)
-            for sprite in objects:
-                sprite.moveForward(5)
-            for sprite in studentgroup:
-                sprite.moveForward(5)
-            direction += 'u'
-        for sprite in map:
-            mapxys[sprite.id] = (sprite.rect.x, sprite.rect.y)  # собираем координаты комнат
-        if len(direction) > 2:  # если нажато более 2 стрелок одновременно, учитываются только 2 из них
-            direction = direction[:1]
-        if 'du' in direction:  # если нажаты и вверх, и вниз, одно из этих направлений не учитывается
-            direction = direction[:-2]
-        if direction != '':  # смена анимации
-            if animatecount == 0:
-                player.animate(direction)
-        elif player.dir != '':  # если игрок не перемещается, включается анимация стояния
-            player.animate(player.dir, True)
-        for obj in objects:  # если игрок оказывается за объектом, объект рисуется поверх, иначе сверху рисуется игрок
-            if obj.rect.bottom - 5 > player.rect.bottom:
-                front.add(obj)
-        for i in studentgroup:  # то же, что с объектами, только с нпс
-            if i.rect.bottom - 5 > player.rect.bottom:
-                front.add(i)
-            i.move(mapxys, animatecount)  # движение нпс по траекториям
-        all_sprites_list.update()
+
+        health()
+        button.draw()
+        draw_time(countseconds)
+        health()
         screen.fill((0, 0, 0))
         screen.blit(background, background_rect)
         all_sprites_list.draw(screen)
@@ -402,6 +502,94 @@ def hse(firstid, firstcoords, wherefrom):
         playergroup.draw(screen)
         front.draw(screen)
         sprites.draw(screen)
+        if game_paused:
+            foodmenu.update()
+        else:
+
+            for room in map:  # если игрок с какой-то стороны заходит за пределы пола, он не может идти в этом направлении
+                roomgo = 0
+                if pygame.sprite.spritecollide(colleft, [room], False, pygame.sprite.collide_mask):
+                    cango.add('r')  # проверяется, что игрок пересекается с полом, т.е. находится на нем
+                    roomgo += 1
+                if pygame.sprite.spritecollide(collright, [room], False, pygame.sprite.collide_mask):
+                    cango.add('l')
+                    roomgo += 1
+                if pygame.sprite.spritecollide(colldown, [room], False, pygame.sprite.collide_mask):
+                    cango.add('d')
+                    roomgo += 1
+                if pygame.sprite.spritecollide(collup, [room], False, pygame.sprite.collide_mask):
+                    cango.add('u')
+                    roomgo += 1
+                if roomgo == 4:
+                    if room.id != curroom:  # если комната не равна текущей, значит, игрок зашел в другую и надо обновить карту
+                        curroom = room.id
+                        mapupdate(curroom, room.neighbours.copy())  # передается id новой текущей комнаты и список соседних
+            for wall in walls:  # столкновение именно со стенами, где они есть - на тестовой карте это 2 дверных проема
+                if pygame.sprite.spritecollide(collright, [wall], False, pygame.sprite.collide_mask):
+                    cango.discard('l')
+                if pygame.sprite.spritecollide(collupwall, [wall], False, pygame.sprite.collide_mask):
+                    cango.discard('u')
+            mapxys = {}
+            if keys[pygame.K_LEFT] and 'r' in cango:  # перемещение игрока в тех направлениях, в которых можно двигаться
+                for sprite in map:
+                    sprite.moveRight(5)
+                for sprite in walls:
+                    sprite.moveRight(5)
+                for sprite in objects:
+                    sprite.moveRight(5)
+                for sprite in studentgroup:
+                    sprite.moveRight(5)
+                direction = 'r'
+            if keys[pygame.K_RIGHT] and 'l' in cango:
+                for sprite in map:
+                    sprite.moveLeft(5)
+                for sprite in walls:
+                    sprite.moveLeft(5)
+                for sprite in objects:
+                    sprite.moveLeft(5)
+                for sprite in studentgroup:
+                    sprite.moveLeft(5)
+                direction = 'l'
+            if keys[pygame.K_DOWN] and 'd' in cango:
+                for sprite in map:
+                    sprite.moveBack(5)
+                for sprite in walls:
+                    sprite.moveBack(5)
+                for sprite in objects:
+                    sprite.moveBack(5)
+                for sprite in studentgroup:
+                    sprite.moveBack(5)
+                direction += 'd'
+            if keys[pygame.K_UP] and 'u' in cango:
+                for sprite in map:
+                    sprite.moveForward(5)
+                for sprite in walls:
+                    sprite.moveForward(5)
+                for sprite in objects:
+                    sprite.moveForward(5)
+                for sprite in studentgroup:
+                    sprite.moveForward(5)
+                direction += 'u'
+            for sprite in map:
+                mapxys[sprite.id] = (sprite.rect.x, sprite.rect.y)  # собираем координаты комнат
+            if len(direction) > 2:  # если нажато более 2 стрелок одновременно, учитываются только 2 из них
+                direction = direction[:1]
+            if 'du' in direction:  # если нажаты и вверх, и вниз, одно из этих направлений не учитывается
+                direction = direction[:-2]
+            if direction != '':  # смена анимации
+                if animatecount == 0:
+                    player.animate(direction)
+            elif player.dir != '':  # если игрок не перемещается, включается анимация стояния
+                player.animate(player.dir, True)
+            for obj in objects:  # если игрок оказывается за объектом, объект рисуется поверх, иначе сверху рисуется игрок
+                if obj.rect.bottom - 5 > player.rect.bottom:
+                    front.add(obj)
+            for i in studentgroup:  # то же, что с объектами, только с нпс
+                if i.rect.bottom - 5 > player.rect.bottom:
+                    front.add(i)
+                i.move(mapxys, animatecount)  # движение нпс по траекториям
+            all_sprites_list.update()
+
         countseconds = countseconds + 1
         if countseconds == 30:
             countseconds = 0
@@ -448,7 +636,7 @@ def home():  # сцена дома
                     schedule_main()
                     schedule_person()
                     schedule_final()
-                    hse(0, (0, 0), 'home') # переключает сцену
+                    hse(0, (0, 0), 'home')  # переключает сцену
                     exit = False
                     # scene_change(scene_hse)
 
@@ -765,7 +953,7 @@ def authors():
     quitBtn = pygame.sprite.Sprite()
     quitBtn.image = pygame.image.load("sprites/menuback.png")
     quitBtn.rect = quitBtn.image.get_rect()
-    quitBtn.rect.x = WIDTH / 2  - 100
+    quitBtn.rect.x = WIDTH / 2 - 100
     quitBtn.rect.y = 100
     sprites.add(quitBtn)
 
@@ -799,21 +987,21 @@ def main_menu():  # сцена главного меню
     authorsBtn = pygame.sprite.Sprite()
     authorsBtn.image = pygame.image.load("sprites/authors.png")
     authorsBtn.rect = authorsBtn.image.get_rect()
-    authorsBtn.rect.x = WIDTH / 2  - 100
+    authorsBtn.rect.x = WIDTH / 2 - 100
     authorsBtn.rect.y = HEIGHT / 2 - 50
     sprites.add(authorsBtn)
 
     savesBtn = pygame.sprite.Sprite()
     savesBtn.image = pygame.image.load("sprites/saves.png")
     savesBtn.rect = savesBtn.image.get_rect()
-    savesBtn.rect.x = WIDTH / 2  - 100
+    savesBtn.rect.x = WIDTH / 2 - 100
     savesBtn.rect.y = HEIGHT / 2 + 50
     sprites.add(savesBtn)
 
     quitBtn = pygame.sprite.Sprite()
     quitBtn.image = pygame.image.load("sprites/quit.png")
     quitBtn.rect = quitBtn.image.get_rect()
-    quitBtn.rect.x = WIDTH / 2  - 100
+    quitBtn.rect.x = WIDTH / 2 - 100
     quitBtn.rect.y = HEIGHT / 2 + 150
     sprites.add(quitBtn)
 
