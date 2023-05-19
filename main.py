@@ -1039,9 +1039,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('09:30-10:50')
                 bit_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
 
     elif output_string == '11:10':
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
@@ -1050,9 +1050,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('11:10-12:30')
                 not_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
     elif minute == 11 and second > 10 or (minute == 12 and second < 30):
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
             if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
@@ -1060,9 +1060,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('11:10-12:30')
                 bit_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
 
     elif output_string == '13:00':
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
@@ -1071,9 +1071,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('13:00-14:20')
                 not_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
     elif minute == 13 and second > 0 or (minute == 14 and second < 20):
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
             if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
@@ -1081,9 +1081,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('13:00-14:20')
                 bit_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
 
     elif output_string == '14:40':
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
@@ -1092,9 +1092,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('14:40-16:00')
                 not_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
     elif minute == 14 and second > 40 or (minute == 16 and second < 0):
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
             if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
@@ -1102,9 +1102,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('14:40-16:00')
                 bit_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
 
     elif output_string == '16:20':
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
@@ -1113,9 +1113,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('16:20-17:40')
                 not_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
     elif minute == 16 and second > 20 or (minute == 17 and second < 40):
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
             if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
@@ -1123,9 +1123,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('16:20-17:40')
                 bit_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
-                transcriptgame.main()
+                transcriptgame.main(hse, pars)
             elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
-                dictantgame.main()
+                dictantgame.main(hse, pars)
 
     if current_day == 6 and output_string == '23:59':  # подсчёт оценок в конце модуля
         grades['Морфология'] = sum(grades['Морфология']) / len(grades['Морфология'])
