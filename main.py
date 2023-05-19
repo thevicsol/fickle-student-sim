@@ -415,7 +415,7 @@ def hse(firstid, firstcoords, wherefrom):
                 maxtime = lesson[1][0] * 60 + lesson[1][1]
                 if mintime <= time1 <= maxtime and curroom == dict_rooms[dict_classes[lesson[2]]]:
                     exit = False
-                    studying(hse, (curroom, mapxys[curroom]), curroomэ)
+                    studying(hse, (curroom, mapxys[curroom]), curroom)
 
         pygame.display.flip()
         clock.tick(30)  # скорость перемещения
