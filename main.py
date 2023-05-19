@@ -1,5 +1,7 @@
 import random
 import pygame
+import transcriptgame
+import dictantgame
 
 COLOR = (255, 100, 98)
 SURFACE_COLOR = (167, 255, 100)
@@ -235,6 +237,7 @@ npclist = {0: {0: (500, 240)}, 5: {1: (500, 240)}}  # словарь нпс, к�
 
 
 def hse(firstid, firstcoords, wherefrom):
+    global minute, second, time1
     for room in map:
         room.kill()
     playergroup.empty()
@@ -282,6 +285,7 @@ def hse(firstid, firstcoords, wherefrom):
     pauseBtn.rect.x = 50
     pauseBtn.rect.y = 50
     sprites.add(pauseBtn)
+    countseconds = 0
     
     while exit:
         for event in pygame.event.get():
@@ -398,9 +402,20 @@ def hse(firstid, firstcoords, wherefrom):
         playergroup.draw(screen)
         front.draw(screen)
         sprites.draw(screen)
+        countseconds = countseconds + 1
+        if countseconds == 30:
+            countseconds = 0
 
+        draw_time(countseconds)
         health()
-        draw_time()
+
+        for lesson in limits:
+            if dict_classes[lesson[2]] != 'Окно':
+                mintime = lesson[0][0] * 60 + lesson[0][1]
+                maxtime = lesson[1][0] * 60 + lesson[1][1]
+                if mintime <= time1 <= maxtime and curroom == dict_rooms[dict_classes[lesson[2]]]:
+                    exit = False
+                    studying(hse, (curroom, mapxys[curroom]), curroomэ)
 
         pygame.display.flip()
         clock.tick(30)  # скорость перемещения
@@ -430,6 +445,9 @@ def home():  # сцена дома
                 if event.key == pygame.K_x:
                     exit = False
                 elif event.key == pygame.K_u:
+                    schedule_main()
+                    schedule_person()
+                    schedule_final()
                     hse(0, (0, 0), 'home') # переключает сцену
                     exit = False
                     # scene_change(scene_hse)
@@ -440,6 +458,8 @@ def home():  # сцена дома
                     pause_menu(home)
 
 
+limits = [[(9, 30), (10, 50), '09:30-10:50'], [(11, 10), (12, 30), '11:10-12:30'], [(13, 0), (14, 20), '13:00-14:20'],
+          [(14, 40), (16, 0), '14:40-16:00'], [(16, 20), (17, 40), '16:20-17:40']]
 max_sleep = 100
 current_sleep = 10
 bar_topleft = (160, 532)
@@ -459,7 +479,7 @@ socialize_bar_max_height = 15
 
 
 def health():
-    sleep_bar = pygame.image.load("timeneeds/Item5.png")
+    sleep_bar = pygame.image.load("sprites/Item5.png")
     sleep_bar_surface = pygame.transform.scale(sleep_bar, (200, 30))
     sleep_bar_rect = sleep_bar_surface.get_rect(center=(250, 540))
     screen.blit(sleep_bar_surface, sleep_bar_rect)
@@ -468,7 +488,7 @@ def health():
     health_bar_rect = pygame.Rect(bar_topleft, (current_bar_width, bar_height))
     pygame.draw.rect(screen, "#4682B4", health_bar_rect, border_radius=15)
 
-    hunger_bar = pygame.image.load("timeneeds/Item5.png")
+    hunger_bar = pygame.image.load("sprites/Item5.png")
     hunger_bar_surface = pygame.transform.scale(hunger_bar, (200, 30))
     hunger_bar_rect = hunger_bar_surface.get_rect(center=(250, 570))
     screen.blit(hunger_bar_surface, hunger_bar_rect)
@@ -477,7 +497,7 @@ def health():
     hunger_bar2_rect = pygame.Rect(hunger_bar_topleft, (current_hunger_width, hunger_bar_max_height))
     pygame.draw.rect(screen, "#4682B4", hunger_bar2_rect, border_radius=15)
 
-    socialize_bar = pygame.image.load("timeneeds/Item5.png")
+    socialize_bar = pygame.image.load("sprites/Item5.png")
     socialize_bar_surface = pygame.transform.scale(socialize_bar, (200, 30))
     socialize_bar_rect = socialize_bar_surface.get_rect(center=(250, 600))
     screen.blit(socialize_bar_surface, socialize_bar_rect)
@@ -525,20 +545,52 @@ def update():
 
 current_module = 1
 weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-minute = 0
-second = 0
+minute = 9
+second = 10
+time1 = 550
 current_day = 0
+lessonsattended = []
 money_wallet = 1894
 invincible = False
 invincibility = 400
 start_time_inv = 0
+grades = {
+    'Морфология': [],
+    'Введение в лингвистику': [],
+    'Иностранный язык': [],
+    'Латинский язык': [],
+    'Программирование': [],
+    'Фонетика': []
+}
+dict_rooms = {
+    'Морфология': 4,
+    'Введение в лингвистику': 5,
+    'Иностранный язык': 2,
+    'Латинский язык': 6,
+    'Программирование': 3,
+    'Фонетика': 1
+}
+dict_classes = {}
 
 
-def draw_time():
-    global minute, second, current_day, current_module
-    time1 = (pygame.time.get_ticks() // 1000)  # получение текущего времени и перевод в секунды
-    minute = (time1 // 60) % 24  # количество минут = часы в игре
-    second = time1 % 60  # количество секунд = минуты в игре
+def draw_time(countseconds):
+    global minute, second, current_day, current_module, time1, grades, dict_classes
+    global output_string
+    global date
+    if countseconds == 29:
+        time1 = time1 + 1
+        minute = time1 // 60  # количество минут = часы в игре
+        second = time1 % 60  # количество секунд = минуты в игре
+        if time1 == 651 and '09:30-10:50' not in lessonsattended and dict_classes['09:30-10:50'] != 'Окно':
+            grades[dict_classes['09:30-10:50']].append(0)
+        if time1 == 751 and '11:10-12:30' not in lessonsattended and dict_classes['11:10-12:30'] != 'Окно':
+            grades[dict_classes['11:10-12:30']].append(0)
+        if time1 == 861 and '13:00-14:20' not in lessonsattended and dict_classes['13:00-14:20'] != 'Окно':
+            grades[dict_classes['13:00-14:20']].append(0)
+        if time1 == 961 and '14:40-16:00' not in lessonsattended and dict_classes['14:40-16:00'] != 'Окно':
+            grades[dict_classes['14:40-16:00']].append(0)
+        if time1 == 1061 and '16:20-17:40' not in lessonsattended and dict_classes['16:20-17:40'] != 'Окно':
+            grades[dict_classes['16:20-17:40']].append(0)
     output_string = "{0:02}:{1:02}".format(minute, second)
     time_surface = font.render(output_string, True, pygame.Color("white"))
     time_rect = time_surface.get_rect(center=(80, 600))
@@ -549,39 +601,42 @@ def draw_time():
     date_rect = date_text.get_rect(center=(80, 540))
     screen.blit(date_text, date_rect)
 
-    def money(amount):
-        global money_wallet
-        wallet = pygame.image.load("sprites/wallet.png")
-        wallet_surf = pygame.transform.scale(wallet, (50, 50))
-        wallet_rect = wallet.get_rect(topleft=(700, 576))
-        screen.blit(wallet_surf, wallet_rect)
-        money_amount_surf = font.render(str(amount), True, pygame.Color("white"))
-        money_amount_rect = money_amount_surf.get_rect(midleft=(wallet_rect.right - 70, 600))
-        screen.blit(money_amount_surf, money_amount_rect)
-    def tm():
-        global invincibility, invincible, start_time_inv, money_wallet, current_day, current_module
-        if not invincible:
-            if time1 == 10:
-                money_wallet += 1
-                invincible = True
-                start_time_inv = time1
-            if time1 == 2400:
-                current_day += 1
-            if current_day == 7:
-                current_day = 0
-                current_module += 1
-            if current_module == 5:
-                current_module = 1
-        if invincible:
-            current_time = time1
-            if current_time - start_time_inv >= invincibility:
-                invincible = False
+
+def money(amount):
+    global money_wallet
+    wallet = pygame.image.load("sprites/wallet.png")
+    wallet_surf = pygame.transform.scale(wallet, (50, 50))
+    wallet_rect = wallet.get_rect(topleft=(700, 576))
+    screen.blit(wallet_surf, wallet_rect)
+    money_amount_surf = font.render(str(amount), True, pygame.Color("white"))
+    money_amount_rect = money_amount_surf.get_rect(midleft=(wallet_rect.right - 70, 600))
+    screen.blit(money_amount_surf, money_amount_rect)
+
+
+def tm():
+    global invincibility, invincible, start_time_inv, money_wallet, current_day, current_module
+    if not invincible:
+        if time1 == 10:
+            money_wallet += 1
+            invincible = True
+            start_time_inv = time1
+        if time1 == 2400:
+            current_day += 1
+        if current_day == 7:
+            current_day = 0
+            current_module += 1
+        if current_module == 5:
+            current_module = 1
+    if invincible:
+        current_time = time1
+        if current_time - start_time_inv >= invincibility:
+            invincible = False
 
     money(money_wallet), tm()
 
 
 def schedule_main():
-    classes_common = ['Фонетика', 'Морфология', 'Социолингвистика', 'Дискретная математика', 'Окно']
+    classes_common = ['Фонетика', 'Морфология', 'Введение в лингвистику', 'Окно']
     global dict_lessons
     dict_lessons = {
     }
@@ -600,8 +655,8 @@ def schedule_main():
 
 
 def schedule_person():
-    classes_person = ['Иностранный язык', 'Английский язык', 'НИС', 'Латинский язык', 'Старославянский язык',
-                      'Академическое письмо', 'Программирование', 'Окно']
+    classes_person = ['Иностранный язык', 'Латинский язык',
+                      'Программирование', 'Окно']
     if dict_lessons != {}:
         xx = random.randrange(1, 6)
         while xx == x or xx == w:
@@ -629,7 +684,7 @@ def schedule_person():
 def schedule_final():
     global dict_classes
     dict_classes = {
-        '9:30-10:50': dict_lessons[1],
+        '09:30-10:50': dict_lessons[1],
         '11:10-12:30': dict_lessons[2],
         '13:00-14:20': dict_lessons[3],
         '14:40-16:00': dict_lessons[4],
@@ -638,6 +693,7 @@ def schedule_final():
 
 
 def schedule(scene, pars):
+    global dict_classes
     sch = str(dict_classes)
     sch1 = sch.replace("'", '')
     sch2 = sch1.replace('{', '')
@@ -838,11 +894,309 @@ def pause_menu(scene, pars):
                     main_menu()
                     exit = False
                 elif schedulebutton.rect.collidepoint(event.pos):
-                    schedule_main()
-                    schedule_person()
-                    schedule_final()
                     schedule(scene, pars)
                     exit = False
+
+
+def bit_late(scene, pars):
+    global minute, second, time1
+    exit = True
+    screen = pygame.display.set_mode((1000, 625))
+    screen.fill((255, 255, 255))
+
+    sprites = pygame.sprite.Group()
+
+    backBtn = pygame.sprite.Sprite()
+    backBtn.image = pygame.image.load("sprites/menuback.png")
+    backBtn.rect = backBtn.image.get_rect()
+    backBtn.rect.x = WIDTH / 2 - 100
+    backBtn.rect.y = HEIGHT / 2 + 100
+    sprites.add(backBtn)
+
+    background = pygame.image.load('sprites/minigamebg.png').convert()
+    background_rect = background.get_rect()
+    screen.blit(background, background_rect)
+
+    mainfont = pygame.font.SysFont('MyriadPro', 50)
+    message = mainfont.render('Опоздал на пару, но пришёл! Оценка - 6', True, (166, 67, 181))
+    message_rect = message.get_rect()
+    message_rect.x = 100
+    message_rect.y = 310
+    sprites.draw(screen)
+
+    while exit:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if backBtn.rect.collidepoint(event.pos):
+                    if 570 <= time1 <= 650:
+                        minute = 10
+                        second = 51
+                        time1 = 651
+                    if 670 <= time1 <= 750:
+                        minute = 12
+                        second = 31
+                        time1 = 751
+
+                    if 780 <= time1 <= 860:
+                        minute = 14
+                        second = 21
+                        time1 = 861
+                    if 880 <= time1 <= 960:
+                        minute = 16
+                        second = 1
+                        time1 = 961
+                    if 980 <= time1 <= 1060:
+                        minute = 17
+                        second = 41
+                        time1 = 1061
+                    exit = False
+        screen.blit(background, background_rect)
+        screen.blit(message, message_rect)
+        sprites.draw(screen)
+        pygame.display.flip()
+    scene(pars[0], pars[1], 'lesson')
+
+
+def not_late(scene, pars):
+    global minute, second, time1
+    exit = True
+    screen = pygame.display.set_mode((1000, 625))
+    screen.fill((255, 255, 255))
+
+    sprites = pygame.sprite.Group()
+
+    mainfont = pygame.font.SysFont('MyriadPro', 50)
+    backBtn = pygame.sprite.Sprite()
+    backBtn.image = pygame.image.load("sprites/menuback.png")
+    backBtn.rect = backBtn.image.get_rect()
+    backBtn.rect.x = WIDTH / 2 - 100
+    backBtn.rect.y = HEIGHT / 2 + 100
+    sprites.add(backBtn)
+
+    background = pygame.image.load('sprites/minigamebg.png').convert()
+    background_rect = background.get_rect()
+    screen.blit(background, background_rect)
+
+    message = mainfont.render('Молодец! Не опоздал на пару! Оценка - 10', True, (166, 67, 181))
+    message_rect = message.get_rect()
+    message_rect.x = 100
+    message_rect.y = 310
+    sprites.draw(screen)
+
+    while exit:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if backBtn.rect.collidepoint(event.pos):
+                    if 570 <= time1 <= 650:
+                        minute = 10
+                        second = 51
+                        time1 = 651
+                    if 670 <= time1 <= 750:
+                        minute = 12
+                        second = 31
+                        time1 = 751
+
+                    if 780 <= time1 <= 860:
+                        minute = 14
+                        second = 21
+                        time1 = 861
+                    if 880 <= time1 <= 960:
+                        minute = 16
+                        second = 1
+                        time1 = 961
+                    if 980 <= time1 <= 1060:
+                        minute = 17
+                        second = 41
+                        time1 = 1061
+                    exit = False
+        screen.blit(background, background_rect)
+        screen.blit(message, message_rect)
+        sprites.draw(screen)
+        pygame.display.flip()
+    scene(pars[0], pars[1], 'lesson')
+
+
+def studying(scene, pars, curroom):
+    global minute, second, current_day, lessonsattended
+    if output_string == '09:30':
+        if curroom == dict_rooms[dict_classes['09:30-10:50']]:
+            if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
+                grades[dict_classes['09:30-10:50']].append(10)
+                lessonsattended.append('09:30-10:50')
+                not_late(scene, pars)
+            elif dict_classes['09:30-10:50'] == 'Фонетика':
+                transcriptgame.main(hse, pars)
+            elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
+                dictantgame.main(hse, pars)
+    elif minute == 9 and second > 30 or (minute == 10 and second < 50):
+        if curroom == dict_rooms[dict_classes['09:30-10:50']]:
+            if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
+                grades[dict_classes['09:30-10:50']].append(6)
+                lessonsattended.append('09:30-10:50')
+                bit_late(scene, pars)
+            elif dict_classes['09:30-10:50'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
+                dictantgame.main()
+
+    elif output_string == '11:10':
+        if curroom == dict_rooms[dict_classes['11:10-12:30']]:
+            if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
+                grades[dict_classes['11:10-12:30']].append(10)
+                lessonsattended.append('11:10-12:30')
+                not_late(scene, pars)
+            elif dict_classes['11:10-12:30'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
+                dictantgame.main()
+    elif minute == 11 and second > 10 or (minute == 12 and second < 30):
+        if curroom == dict_rooms[dict_classes['11:10-12:30']]:
+            if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
+                grades[dict_classes['11:10-12:30']].append(6)
+                lessonsattended.append('11:10-12:30')
+                bit_late(scene, pars)
+            elif dict_classes['11:10-12:30'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
+                dictantgame.main()
+
+    elif output_string == '13:00':
+        if curroom == dict_rooms[dict_classes['13:00-14:20']]:
+            if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
+                grades[dict_classes['13:00-14:20']].append(10)
+                lessonsattended.append('13:00-14:20')
+                not_late(scene, pars)
+            elif dict_classes['13:00-14:20'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
+                dictantgame.main()
+    elif minute == 13 and second > 0 or (minute == 14 and second < 20):
+        if curroom == dict_rooms[dict_classes['13:00-14:20']]:
+            if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
+                grades[dict_classes['13:00-14:20']].append(6)
+                lessonsattended.append('13:00-14:20')
+                bit_late(scene, pars)
+            elif dict_classes['13:00-14:20'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
+                dictantgame.main()
+
+    elif output_string == '14:40':
+        if curroom == dict_rooms[dict_classes['14:40-16:00']]:
+            if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
+                grades[dict_classes['14:40-16:00']].append(10)
+                lessonsattended.append('14:40-16:00')
+                not_late(scene, pars)
+            elif dict_classes['14:40-16:00'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
+                dictantgame.main()
+    elif minute == 14 and second > 40 or (minute == 16 and second < 0):
+        if curroom == dict_rooms[dict_classes['14:40-16:00']]:
+            if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
+                grades[dict_classes['14:40-16:00']].append(6)
+                lessonsattended.append('14:40-16:00')
+                bit_late(scene, pars)
+            elif dict_classes['14:40-16:00'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
+                dictantgame.main()
+
+    elif output_string == '16:20':
+        if curroom == dict_rooms[dict_classes['16:20-17:40']]:
+            if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
+                grades[dict_classes['16:20-17:40']].append(10)
+                lessonsattended.append('16:20-17:40')
+                not_late(scene, pars)
+            elif dict_classes['16:20-17:40'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
+                dictantgame.main()
+    elif minute == 16 and second > 20 or (minute == 17 and second < 40):
+        if curroom == dict_rooms[dict_classes['16:20-17:40']]:
+            if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
+                grades[dict_classes['16:20-17:40']].append(6)
+                lessonsattended.append('16:20-17:40')
+                bit_late(scene, pars)
+            elif dict_classes['16:20-17:40'] == 'Фонетика':
+                transcriptgame.main()
+            elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
+                dictantgame.main()
+
+    if current_day == 6 and output_string == '23:59':  # подсчёт оценок в конце модуля
+        grades['Морфология'] = sum(grades['Морфология']) / len(grades['Морфология'])
+        grades['Введение в лингвистику'] = sum(grades['Введение в лингвистику']) / len(grades['Введение в лингвистику'])
+        grades['Иностранный язык'] = sum(grades['Иностранный язык']) / len(grades['Иностранный язык'])
+        grades['Латинский язык'] = sum(grades['Латинский язык']) / len(grades['Латинский язык'])
+        grades['Программирование'] = sum(grades['Программирование']) / len(grades['Программирование'])
+        grades['Фонетика'] = sum(grades['Фонетика']) / len(grades['Фонетика'])
+        sch = str(grades)
+        sch1 = sch.replace("'", '')
+        sch2 = sch1.replace('{', '')
+        sch3 = sch2.replace('}', '')
+        sch4 = sch3.split(', ')
+        exit = True
+        screen = pygame.display.set_mode((1280, 720))
+        background = pygame.transform.scale(pygame.image.load('sprites/minigamebg.png'), (1280, 720))
+        background_rect = background.get_rect()
+        mainfont = pygame.font.SysFont('MyriadPro', 50)
+        text1 = mainfont.render(sch4[0], True, (166, 67, 181))
+        text1_rect = text1.get_rect()
+        text1_rect.x = 350
+        text1_rect.y = 150
+        text2 = mainfont.render(sch4[1], True, (166, 67, 181))
+        text2_rect = text2.get_rect()
+        text2_rect.x = 350
+        text2_rect.y = 230
+        text3 = mainfont.render(sch4[2], True, (166, 67, 181))
+        text3_rect = text3.get_rect()
+        text3_rect.x = 350
+        text3_rect.y = 310
+        text4 = mainfont.render(sch4[3], True, (166, 67, 181))
+        text4_rect = text4.get_rect()
+        text4_rect.x = 350
+        text4_rect.y = 390
+        text5 = mainfont.render(sch4[4], True, (166, 67, 181))
+        text5_rect = text5.get_rect()
+        text5_rect.x = 350
+        text5_rect.y = 470
+        head = mainfont.render('Оценки за модуль', True, (166, 67, 181))
+        head_rect = head.get_rect()
+        head_rect.x = 540
+        head_rect.y = 70
+        button = pygame.sprite.Group()
+        backbutton = pygame.sprite.Sprite()  # кнопка возвращения в игру
+        backbutton.image = pygame.image.load("sprites/back.png")
+        backbutton.rect = backbutton.image.get_rect()
+        backbutton.rect.x = 50
+        backbutton.rect.y = 570
+        button.add(backbutton)
+        while exit:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit = False
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if backbutton.rect.collidepoint(event.pos):  # если нажимается кнопка открытия/закрытия инструкции
+                        exit = False
+                        scene(pars[0], pars[1], 'pause')
+                        minute = 0
+                        second = 0
+                        current_day = 0
+                        current_module += 1
+                        home()
+            screen.blit(background, background_rect)
+            screen.blit(text1, text1_rect)
+            screen.blit(text2, text2_rect)
+            screen.blit(text3, text3_rect)
+            screen.blit(text4, text4_rect)
+            screen.blit(text5, text5_rect)
+            screen.blit(head, head_rect)
+            button.draw(screen)
+            pygame.display.flip()
 
 
 main_menu()  # сначала включается сцена главного меню
