@@ -2,7 +2,7 @@ import random
 import pygame
 
 
-def main(scene, pars):
+def main(scene, pars,time1):
     screen = pygame.display.set_mode((1280, 720))
     background = pygame.transform.scale(pygame.image.load('sprites/minigamebg.png'), (1280, 720))
     background_rect = background.get_rect()
@@ -37,6 +37,13 @@ def main(scene, pars):
     sergienko.rect.x = 750
     sergienko.rect.y = 250
     sprites.add(sergienko)
+    bbsprite = pygame.sprite.Group()
+    backBtn = pygame.sprite.Sprite()
+    backBtn.image = pygame.image.load("sprites/menuback.png")
+    backBtn.rect = backBtn.image.get_rect()
+    backBtn.rect.x = 20
+    backBtn.rect.y = 20
+    bbsprite.add(backBtn)
 
     color_inactive = pygame.Color('lightskyblue3')
     color_active = (166, 97, 181)
@@ -60,7 +67,7 @@ def main(scene, pars):
     countrect = phrasestring.get_rect()
     countrect.x = 1100
     countrect.y = 100
-    timeleft = 20
+    timeleft = 60
     showtime = str(timeleft // 60) + ':' + str(timeleft % 60)
     if showtime[-2:] == ':0':
         showtime = showtime + '0'
@@ -88,6 +95,30 @@ def main(scene, pars):
                     active = not active
                 else:
                     active = False
+                if backBtn.rect.collidepoint(event.pos) and finished:
+                    if 570 <= time1 <= 650:
+                        minute = 10
+                        second = 51
+                        time1 = 651
+                    if 670 <= time1 <= 750:
+                        minute = 12
+                        second = 31
+                        time1 = 751
+
+                    if 780 <= time1 <= 860:
+                        minute = 14
+                        second = 21
+                        time1 = 861
+                    if 880 <= time1 <= 960:
+                        minute = 16
+                        second = 1
+                        time1 = 961
+                    if 980 <= time1 <= 1060:
+                        minute = 17
+                        second = 41
+                        time1 = 1061
+                    exit = False
+                    scene(pars[0], pars[1], 'lessonВведение в лингвистику', (minute, second, time1), grade * 2)
                 # Change the current color of the input box.
                 if manualbutton.rect.collidepoint(event.pos):
                     manual = not manual
@@ -191,30 +222,18 @@ def main(scene, pars):
             pygame.draw.rect(screen, color, input_box, 2)
         else:
             if completed == 5:
+                grade = completed
                 message = mainfont.render('Вы выполнили задание! Ваша оценка - 10', True, (95, 125, 112))
                 completed = -1
             elif completed != -1:
+                grade = completed
                 message = mainfont.render(f'Вы выполнили задание не полностью. Ваша оценка - {completed * 2}',
                                           True, (187, 48, 84))
                 completed = -1
-            sprites = pygame.sprite.Group()
-            backBtn = pygame.sprite.Sprite()
-            backBtn.image = pygame.image.load("sprites/menuback.png")
-            backBtn.rect = backBtn.image.get_rect()
-            backBtn.rect.x = 200
-            backBtn.rect.y = 200
-            sprites.add(backBtn)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    exit = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if backBtn.rect.collidepoint(event.pos):
-                        scene(pars[0], pars[1], 'lesson')
-                        exit = False
             messagerect = message.get_rect(center=(640, 360))
             screen.blit(background, background_rect)
             screen.blit(message, messagerect)
-            sprites.draw(screen)
+            bbsprite.draw(screen)
         pygame.display.flip()
         clock.tick(40)
 

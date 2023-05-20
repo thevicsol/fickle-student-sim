@@ -236,8 +236,8 @@ objlist = {5: {0: (1255, 1156)}}  # то же самое, что со стена
 npclist = {0: {0: (500, 240)}, 5: {1: (500, 240)}}  # словарь нпс, ключи - комнаты, в которых нпс спавнятся, и id нпс
 
 
-def hse(firstid, firstcoords, wherefrom):
-    global minute, second, time1
+def hse(firstid, firstcoords, wherefrom, timegot=(0, 0, 0), grade=-1):
+    global minute, second, time1, grades
     for room in map:
         room.kill()
     playergroup.empty()
@@ -273,6 +273,12 @@ def hse(firstid, firstcoords, wherefrom):
     if firstid == 0 and wherefrom != 'pause':
         npc_0 = NPC((255, 0, 0), 0, (500, 240), paths[0])
         studentgroup.add(npc_0)
+    if 'lesson' in wherefrom:
+        minute = timegot[0]
+        second = timegot[1]
+        time1 = timegot[2]
+        if grade != -1:
+            grades[wherefrom[6:]].append(grade)
     mapupdate(firstid, room0.neighbours.copy())
     exit = True
     clock = pygame.time.Clock()
@@ -546,8 +552,8 @@ def update():
 current_module = 1
 weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 minute = 9
-second = 10
-time1 = 550
+second = 20
+time1 = 560
 current_day = 0
 lessonsattended = []
 money_wallet = 1894
@@ -693,7 +699,7 @@ def schedule_final():
 
 
 def schedule(scene, pars):
-    global dict_classes
+    global dict_classes, grades, dict_rooms
     sch = str(dict_classes)
     sch1 = sch.replace("'", '')
     sch2 = sch1.replace('{', '')
@@ -704,26 +710,45 @@ def schedule(scene, pars):
     background = pygame.transform.scale(pygame.image.load('sprites/minigamebg.png'), (1280, 720))
     background_rect = background.get_rect()
     mainfont = pygame.font.SysFont('MyriadPro', 50)
-    text1 = mainfont.render(sch4[0], True, (166, 67, 181))
+    if dict_classes['09:30-10:50'] != 'Окно':
+        text1 = mainfont.render(sch4[0] + ' ауд. ' + str(dict_rooms[dict_classes['09:30-10:50']]), True, (166, 67, 181))
+    else:
+        text1 = mainfont.render(sch4[0], True, (166, 67, 181))
     text1_rect = text1.get_rect()
     text1_rect.x = 350
     text1_rect.y = 150
-    text2 = mainfont.render(sch4[1], True, (166, 67, 181))
+    if dict_classes['11:10-12:30'] != 'Окно':
+        text2 = mainfont.render(sch4[1] + ' ауд. ' + str(dict_rooms[dict_classes['11:10-12:30']]), True, (166, 67, 181))
+    else:
+        text2 = mainfont.render(sch4[1], True, (166, 67, 181))
     text2_rect = text2.get_rect()
     text2_rect.x = 350
     text2_rect.y = 230
-    text3 = mainfont.render(sch4[2], True, (166, 67, 181))
+    if dict_classes['13:00-14:20'] != 'Окно':
+        text3 = mainfont.render(sch4[2] + ' ауд. ' + str(dict_rooms[dict_classes['13:00-14:20']]), True, (166, 67, 181))
+    else:
+        text3 = mainfont.render(sch4[2], True, (166, 67, 181))
     text3_rect = text3.get_rect()
     text3_rect.x = 350
     text3_rect.y = 310
-    text4 = mainfont.render(sch4[3], True, (166, 67, 181))
+    if dict_classes['14:40-16:00'] != 'Окно':
+        text4 = mainfont.render(sch4[3] + ' ауд. ' + str(dict_rooms[dict_classes['14:40-16:00']]), True, (166, 67, 181))
+    else:
+        text4 = mainfont.render(sch4[3], True, (166, 67, 181))
     text4_rect = text4.get_rect()
     text4_rect.x = 350
     text4_rect.y = 390
-    text5 = mainfont.render(sch4[4], True, (166, 67, 181))
+    if dict_classes['16:20-17:40'] != 'Окно':
+        text5 = mainfont.render(sch4[4] + ' ауд. ' + str(dict_rooms[dict_classes['16:20-17:40']]), True, (166, 67, 181))
+    else:
+        text5 = mainfont.render(sch4[4], True, (166, 67, 181))
     text5_rect = text5.get_rect()
     text5_rect.x = 350
     text5_rect.y = 470
+    text6 = mainfont.render('Оценки: ' + str(grades), True, (166, 67, 181))
+    text6_rect = text5.get_rect()
+    text6_rect.x = 10
+    text6_rect.y = 550
     head = mainfont.render('Расписание', True, (166, 67, 181))
     head_rect = head.get_rect()
     head_rect.x = 540
@@ -749,6 +774,7 @@ def schedule(scene, pars):
         screen.blit(text3, text3_rect)
         screen.blit(text4, text4_rect)
         screen.blit(text5, text5_rect)
+        screen.blit(text6, text6_rect)
         screen.blit(head, head_rect)
         button.draw(screen)
         pygame.display.flip()
@@ -956,7 +982,7 @@ def bit_late(scene, pars):
         screen.blit(message, message_rect)
         sprites.draw(screen)
         pygame.display.flip()
-    scene(pars[0], pars[1], 'lesson')
+    scene(pars[0], pars[1], 'attended')
 
 
 def not_late(scene, pars):
@@ -1017,7 +1043,7 @@ def not_late(scene, pars):
         screen.blit(message, message_rect)
         sprites.draw(screen)
         pygame.display.flip()
-    scene(pars[0], pars[1], 'lesson')
+    scene(pars[0], pars[1], 'attended')
 
 
 def studying(scene, pars, curroom):
@@ -1029,9 +1055,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('09:30-10:50')
                 not_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
     elif minute == 9 and second > 30 or (minute == 10 and second < 50):
         if curroom == dict_rooms[dict_classes['09:30-10:50']]:
             if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
@@ -1039,9 +1065,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('09:30-10:50')
                 bit_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
 
     elif output_string == '11:10':
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
@@ -1050,9 +1076,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('11:10-12:30')
                 not_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
     elif minute == 11 and second > 10 or (minute == 12 and second < 30):
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
             if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
@@ -1060,9 +1086,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('11:10-12:30')
                 bit_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
 
     elif output_string == '13:00':
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
@@ -1071,9 +1097,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('13:00-14:20')
                 not_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
     elif minute == 13 and second > 0 or (minute == 14 and second < 20):
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
             if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
@@ -1081,9 +1107,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('13:00-14:20')
                 bit_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
 
     elif output_string == '14:40':
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
@@ -1092,9 +1118,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('14:40-16:00')
                 not_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
     elif minute == 14 and second > 40 or (minute == 16 and second < 0):
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
             if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
@@ -1102,9 +1128,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('14:40-16:00')
                 bit_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
 
     elif output_string == '16:20':
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
@@ -1113,9 +1139,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('16:20-17:40')
                 not_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
     elif minute == 16 and second > 20 or (minute == 17 and second < 40):
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
             if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
@@ -1123,9 +1149,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('16:20-17:40')
                 bit_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
-                transcriptgame.main(hse, pars)
+                transcriptgame.main(hse, pars, time1)
             elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars)
+                dictantgame.main(hse, pars, time1)
 
     if current_day == 6 and output_string == '23:59':  # подсчёт оценок в конце модуля
         grades['Морфология'] = sum(grades['Морфология']) / len(grades['Морфология'])

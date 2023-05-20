@@ -2,7 +2,7 @@ import random
 import pygame
 
 
-def main(scene, pars):
+def main(scene, pars, time1):
     screen = pygame.display.set_mode((1280, 720))
     background = pygame.transform.scale(pygame.image.load('sprites/minigamebg.png'), (1280, 720))
     background_rect = background.get_rect()
@@ -31,6 +31,13 @@ def main(scene, pars):
     manualbutton.rect.x = 50
     manualbutton.rect.y = 570
     sprites.add(manualbutton)
+    bbsprite = pygame.sprite.Group()
+    backBtn = pygame.sprite.Sprite()
+    backBtn.image = pygame.image.load("sprites/menuback.png")
+    backBtn.rect = backBtn.image.get_rect()
+    backBtn.rect.x = 20
+    backBtn.rect.y = 20
+    bbsprite.add(backBtn)
 
     color_inactive = pygame.Color('lightskyblue3')  # цвет поля ввода, когда оно неактивно
     color_active = (166, 97, 181)  # когда активно
@@ -53,7 +60,7 @@ def main(scene, pars):
     countrect = phrasestring.get_rect()
     countrect.x = 1100
     countrect.y = 100
-    timeleft = 20  # сколько осталось секунд
+    timeleft = 150  # сколько осталось секунд
     showtime = str(timeleft // 60) + ':' + str(timeleft % 60)  # оставшееся время в формате мм:сс
     if showtime[-2:] == ':0':  # добавление нужных нулей где их нет
         showtime = showtime + '0'
@@ -79,6 +86,30 @@ def main(scene, pars):
                     active = not active  # если нажал, ввод активируется
                 else:
                     active = False
+                if backBtn.rect.collidepoint(event.pos) and finished:
+                    if 570 <= time1 <= 650:
+                        minute = 10
+                        second = 51
+                        time1 = 651
+                    if 670 <= time1 <= 750:
+                        minute = 12
+                        second = 31
+                        time1 = 751
+
+                    if 780 <= time1 <= 860:
+                        minute = 14
+                        second = 21
+                        time1 = 861
+                    if 880 <= time1 <= 960:
+                        minute = 16
+                        second = 1
+                        time1 = 961
+                    if 980 <= time1 <= 1060:
+                        minute = 17
+                        second = 41
+                        time1 = 1061
+                    exit = False
+                    scene(pars[0], pars[1], 'lessonФонетика', (minute, second, time1), grade * 2)
                 if manualbutton.rect.collidepoint(event.pos):  # если нажимается кнопка открытия/закрытия инструкции
                     manual = not manual  # инструкция открывается, если не открыта, и закрывается, если открыта
                     if manual:  # если открывается
@@ -179,30 +210,18 @@ def main(scene, pars):
             pygame.draw.rect(screen, color, input_box, 2)
         else:  # если игра завершена
             if completed == 5:  # если решены все 5 примеров
+                grade = completed
                 message = mainfont.render('Вы выполнили задание! Ваша оценка - 10', True, (95, 125, 112))
                 completed = -1
             elif completed != -1:  # если решены не все примеры
+                grade = completed
                 message = mainfont.render(f'Вы выполнили задание не полностью. Ваша оценка - {completed * 2}',
                                           True, (187, 48, 84))
                 completed = -1
-            sprites = pygame.sprite.Group()
-            backBtn = pygame.sprite.Sprite()
-            backBtn.image = pygame.image.load("sprites/menuback.png")
-            backBtn.rect = backBtn.image.get_rect()
-            backBtn.rect.x = 20
-            backBtn.rect.y = 20
-            sprites.add(backBtn)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    exit = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if backBtn.rect.collidepoint(event.pos):
-                        scene(pars[0], pars[1], 'lesson')
-                        exit = False
             messagerect = message.get_rect(center=(640, 360))
             screen.blit(background, background_rect)
             screen.blit(message, messagerect)
-            sprites.draw(screen)
+            bbsprite.draw(screen)
         pygame.display.flip()
         clock.tick(40)
 
