@@ -2,7 +2,7 @@ import random
 import pygame
 
 
-def main(scene, pars,time1):
+def main(scene, pars, time1, n):
     screen = pygame.display.set_mode((1280, 720))
     background = pygame.transform.scale(pygame.image.load('sprites/minigamebg.png'), (1280, 720))
     background_rect = background.get_rect()
@@ -118,7 +118,7 @@ def main(scene, pars,time1):
                         second = 41
                         time1 = 1061
                     exit = False
-                    scene(pars[0], pars[1], 'lessonВведение в лингвистику', (minute, second, time1), grade * 2)
+                    scene(pars[0], pars[1], 'lessonВведение в лингвистику', n, (minute, second, time1), grade * 2)
                 # Change the current color of the input box.
                 if manualbutton.rect.collidepoint(event.pos):
                     manual = not manual

@@ -2,6 +2,7 @@ import random
 import pygame
 import transcriptgame
 import dictantgame
+import character
 
 COLOR = (255, 100, 98)
 SURFACE_COLOR = (167, 255, 100)
@@ -10,9 +11,9 @@ HEIGHT = 625  # размер экрана
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, color):
+    def __init__(self, color, n):
         super().__init__()
-        self.sheet = pygame.transform.scale(pygame.image.load("sprites/spritesheet.png"), (292, 910))  # лист спрайтов
+        self.sheet = pygame.transform.scale(pygame.image.load(f"sprites/spritesheet{n}.png"), (292, 910))  # лист спрайтов
         self.image = self.sheet.subsurface(pygame.Rect((0, 0), (73, 182)))  # вырезаем кадр из листа спрайтов
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
@@ -89,8 +90,8 @@ class RoomElement(pygame.sprite.Sprite):  # класс для элементов
 
 
 class NPC(Player):
-    def __init__(self, color, id, coords, path):
-        super().__init__(color)
+    def __init__(self, color, id, coords, path, n):
+        super().__init__(color, n)
         self.id = id  # айди нпс
         self.rect.x = coords[0]
         self.rect.y = coords[1]
@@ -192,7 +193,7 @@ def mapupdate(id, neighbours):  # смена отображаемых комна
             for key in npclist[roomid].keys():
                 if key not in npcids:
                     npc_2 = NPC((255, 0, 0), key, (xylist[roomid][0] + npclist[roomid][key][0],
-                                                   xylist[roomid][1] + npclist[roomid][key][1]), paths[key])
+                                                   xylist[roomid][1] + npclist[roomid][key][1]), paths[key], 1)
                     studentgroup.add(npc_2)
     if id in wallist.keys():  # добавляем стены текущей комнаты
         for wallid in wallist[id]['in']:
@@ -236,13 +237,14 @@ objlist = {5: {0: (1255, 1156)}}  # то же самое, что со стена
 npclist = {0: {0: (500, 240)}, 5: {1: (500, 240)}}  # словарь нпс, ключи - комнаты, в которых нпс спавнятся, и id нпс
 
 
-def hse(firstid, firstcoords, wherefrom, timegot=(0, 0, 0), grade=-1):
-    global minute, second, time1, grades
+def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
+    global minute, second, time1, grades, n
+    n = then
     for room in map:
         room.kill()
     playergroup.empty()
 
-    player = Player((255, 0, 0))
+    player = Player((255, 0, 0), n)
     collup = CollisionMask((255, 0, 0), 'sprites/collup.png')  # рамки для столкновения со стенами
     collision.add(collup)
     collupwall = CollisionMask((255, 0, 0), 'sprites/collupwall.png')
@@ -271,7 +273,7 @@ def hse(firstid, firstcoords, wherefrom, timegot=(0, 0, 0), grade=-1):
     curroom = firstid  # id текущей комнаты
     animatecount = -1
     if firstid == 0 and wherefrom != 'pause':
-        npc_0 = NPC((255, 0, 0), 0, (500, 240), paths[0])
+        npc_0 = NPC((255, 0, 0), 0, (500, 240), paths[0], n)
         studentgroup.add(npc_0)
     if 'lesson' in wherefrom:
         minute = timegot[0]
@@ -306,7 +308,7 @@ def hse(firstid, firstcoords, wherefrom, timegot=(0, 0, 0), grade=-1):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pauseBtn.rect.collidepoint(event.pos):
                     exit = False
-                    pause_menu(hse, (curroom, mapxys[curroom]))
+                    pause_menu(hse, (curroom, mapxys[curroom], n))
     
         front = pygame.sprite.Group()  # объекты, находящиеся перед игроком, следовательно, рисующиеся поверх него
         animatecount = animatecount + 1  # счетчик, отвечающий за скорость анимации - она сменяется каждый третий кадр
@@ -421,13 +423,13 @@ def hse(firstid, firstcoords, wherefrom, timegot=(0, 0, 0), grade=-1):
                 maxtime = lesson[1][0] * 60 + lesson[1][1]
                 if mintime <= time1 <= maxtime and curroom == dict_rooms[dict_classes[lesson[2]]]:
                     exit = False
-                    studying(hse, (curroom, mapxys[curroom]), curroom)
+                    studying(hse, (curroom, mapxys[curroom], n), curroom)
 
         pygame.display.flip()
         clock.tick(30)  # скорость перемещения
 
 
-def home():  # сцена дома
+def home(n):  # сцена дома
     exit = True
     while exit:
         screen.fill((255, 255, 255))
@@ -454,14 +456,14 @@ def home():  # сцена дома
                     schedule_main()
                     schedule_person()
                     schedule_final()
-                    hse(0, (0, 0), 'home') # переключает сцену
+                    hse(0, (0, 0), 'home', n)  # переключает сцену
                     exit = False
                     # scene_change(scene_hse)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pauseBtn.rect.collidepoint(event.pos):
                     exit = False
-                    pause_menu(home)
+                    pause_menu(home, n)
 
 
 limits = [[(9, 30), (10, 50), '09:30-10:50'], [(11, 10), (12, 30), '11:10-12:30'], [(13, 0), (14, 20), '13:00-14:20'],
@@ -554,6 +556,7 @@ weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 minute = 9
 second = 20
 time1 = 560
+n = 0
 current_day = 0
 lessonsattended = []
 money_wallet = 1894
@@ -852,13 +855,12 @@ def main_menu():  # сцена главного меню
                 exit = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if playBtn.rect.collidepoint(event.pos):
-                    home()
                     exit = False
                 elif authorsBtn.rect.collidepoint(event.pos):
                     authors()
                     exit = False
                 elif savesBtn.rect.collidepoint(event.pos):
-                    # доделать тут сцену с сейвами
+                    saves()
                     exit = False
                 elif quitBtn.rect.collidepoint(event.pos):
                     exit = False
@@ -872,6 +874,79 @@ def main_menu():  # сцена главного меню
             #         home()
             #         exit = False
             #         # scene_change(scene_hse)
+
+
+def saves():  # сцена главного меню
+
+    exit = True
+    screen.fill((200, 255, 255))
+
+    sprites = pygame.sprite.Group()
+
+    playBtn1 = pygame.sprite.Sprite()
+    playBtn1.image = pygame.image.load("sprites/play.png")
+    playBtn1.rect = playBtn1.image.get_rect()
+    playBtn1.rect.x = WIDTH / 2 - 400
+    playBtn1.rect.y = HEIGHT / 2 - 50
+    sprites.add(playBtn1)
+
+    playBtn2 = pygame.sprite.Sprite()
+    playBtn2.image = pygame.image.load("sprites/play.png")
+    playBtn2.rect = playBtn2.image.get_rect()
+    playBtn2.rect.x = WIDTH / 2 - 100
+    playBtn2.rect.y = HEIGHT / 2 - 50
+    sprites.add(playBtn2)
+
+    playBtn3 = pygame.sprite.Sprite()
+    playBtn3.image = pygame.image.load("sprites/play.png")
+    playBtn3.rect = playBtn3.image.get_rect()
+    playBtn3.rect.x = WIDTH / 2 + 200
+    playBtn3.rect.y = HEIGHT / 2 - 50
+    sprites.add(playBtn3)
+
+    quitBtn = pygame.sprite.Sprite()
+    quitBtn.image = pygame.image.load("sprites/menuback.png")
+    quitBtn.rect = quitBtn.image.get_rect()
+    quitBtn.rect.x = WIDTH / 2 - 100
+    quitBtn.rect.y = 100
+    sprites.add(quitBtn)
+
+    sprites.draw(screen)
+    pygame.display.flip()
+    while exit:
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if playBtn1.rect.collidepoint(event.pos):
+                    with open('data/save1.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    if len(data) == 0:
+                        character.main(1, home)
+                    else:
+                        home(1)
+                    exit = False
+                elif playBtn2.rect.collidepoint(event.pos):
+                    with open('data/save2.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    if len(data) == 0:
+                        character.main(2, home)
+                    else:
+                        home(2)
+                    exit = False
+                elif playBtn3.rect.collidepoint(event.pos):
+                    with open('data/save3.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    if len(data) == 0:
+                        character.main(3, home)
+                    else:
+                        home(3)
+                    saves()
+                    exit = False
+                elif quitBtn.rect.collidepoint(event.pos):
+                    main_menu()
+                    exit = False
 
 
 def pause_menu(scene, pars):
@@ -914,7 +989,7 @@ def pause_menu(scene, pars):
                 exit = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if backBtn.rect.collidepoint(event.pos):
-                    scene(pars[0], pars[1], 'pause')
+                    scene(pars[0], pars[1], 'pause', pars[2])
                     exit = False
                 elif menuBtn.rect.collidepoint(event.pos):
                     main_menu()
@@ -982,7 +1057,7 @@ def bit_late(scene, pars):
         screen.blit(message, message_rect)
         sprites.draw(screen)
         pygame.display.flip()
-    scene(pars[0], pars[1], 'attended')
+    scene(pars[0], pars[1], 'attended', pars[2])
 
 
 def not_late(scene, pars):
@@ -1043,11 +1118,11 @@ def not_late(scene, pars):
         screen.blit(message, message_rect)
         sprites.draw(screen)
         pygame.display.flip()
-    scene(pars[0], pars[1], 'attended')
+    scene(pars[0], pars[1], 'attended', pars[2])
 
 
 def studying(scene, pars, curroom):
-    global minute, second, current_day, lessonsattended
+    global minute, second, current_day, lessonsattended, n
     if output_string == '09:30':
         if curroom == dict_rooms[dict_classes['09:30-10:50']]:
             if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
@@ -1055,9 +1130,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('09:30-10:50')
                 not_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
     elif minute == 9 and second > 30 or (minute == 10 and second < 50):
         if curroom == dict_rooms[dict_classes['09:30-10:50']]:
             if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
@@ -1065,9 +1140,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('09:30-10:50')
                 bit_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['09:30-10:50'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
 
     elif output_string == '11:10':
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
@@ -1076,9 +1151,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('11:10-12:30')
                 not_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
     elif minute == 11 and second > 10 or (minute == 12 and second < 30):
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
             if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
@@ -1086,9 +1161,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('11:10-12:30')
                 bit_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['11:10-12:30'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
 
     elif output_string == '13:00':
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
@@ -1097,9 +1172,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('13:00-14:20')
                 not_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
     elif minute == 13 and second > 0 or (minute == 14 and second < 20):
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
             if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
@@ -1107,9 +1182,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('13:00-14:20')
                 bit_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['13:00-14:20'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
 
     elif output_string == '14:40':
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
@@ -1118,9 +1193,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('14:40-16:00')
                 not_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
     elif minute == 14 and second > 40 or (minute == 16 and second < 0):
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
             if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
@@ -1128,9 +1203,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('14:40-16:00')
                 bit_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['14:40-16:00'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
 
     elif output_string == '16:20':
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
@@ -1139,9 +1214,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('16:20-17:40')
                 not_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
     elif minute == 16 and second > 20 or (minute == 17 and second < 40):
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
             if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
@@ -1149,9 +1224,9 @@ def studying(scene, pars, curroom):
                 lessonsattended.append('16:20-17:40')
                 bit_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
-                transcriptgame.main(hse, pars, time1)
+                transcriptgame.main(hse, pars, time1, n)
             elif dict_classes['16:20-17:40'] == 'Введение в лингвистику':
-                dictantgame.main(hse, pars, time1)
+                dictantgame.main(hse, pars, time1, n)
 
     if current_day == 6 and output_string == '23:59':  # подсчёт оценок в конце модуля
         grades['Морфология'] = sum(grades['Морфология']) / len(grades['Морфология'])
@@ -1208,12 +1283,12 @@ def studying(scene, pars, curroom):
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if backbutton.rect.collidepoint(event.pos):  # если нажимается кнопка открытия/закрытия инструкции
                         exit = False
-                        scene(pars[0], pars[1], 'pause')
+                        scene(pars[0], pars[1], 'pause', pars[2])
                         minute = 0
                         second = 0
                         current_day = 0
                         current_module += 1
-                        home()
+                        home(pars[2])
             screen.blit(background, background_rect)
             screen.blit(text1, text1_rect)
             screen.blit(text2, text2_rect)
