@@ -1,3 +1,2 @@
-Необходимые библиотеки:
-pygame
-pillow
+pygame==2.1.2
+Pillow==9.5.0
