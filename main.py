@@ -1048,9 +1048,9 @@ def update():
 
 current_module = 1
 weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-minute = 9
-second = 20
-time1 = 560
+minute = 8
+second = 0
+time1 = 480
 tirecount = 0
 n = 0
 speed = 30
