@@ -109,6 +109,15 @@ def main(scene, pars, time1, n):
                         second = 41
                         time1 = 1061
                     exit = False
+                    with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    if data[6] == '\n':
+                        data[6] = f'{grade * 2}\n'
+                    else:
+                        data[6] = data[6][:-1] + f',{grade * 2}\n'
+                    with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                        for line in data:
+                            f.writelines(line)
                     scene(pars[0], pars[1], 'lessonФонетика', n, (minute, second, time1), grade * 2)
                 if manualbutton.rect.collidepoint(event.pos):  # если нажимается кнопка открытия/закрытия инструкции
                     manual = not manual  # инструкция открывается, если не открыта, и закрывается, если открыта

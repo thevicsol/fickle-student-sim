@@ -118,6 +118,15 @@ def main(scene, pars, time1, n):
                         second = 41
                         time1 = 1061
                     exit = False
+                    with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    if data[2] == '\n':
+                        data[2] = f'{grade * 2}\n'
+                    else:
+                        data[2] = data[2][:-1] + f',{grade * 2}\n'
+                    with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                        for line in data:
+                            f.writelines(line)
                     scene(pars[0], pars[1], 'lessonВведение в лингвистику', n, (minute, second, time1), grade * 2)
                 # Change the current color of the input box.
                 if manualbutton.rect.collidepoint(event.pos):

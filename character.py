@@ -1,5 +1,7 @@
 import pygame
+import random
 from PIL import Image
+
 
 def changepiece(piece, curdir):
     dirs = [[False, 0], [False, 3], [False, 2], [True, 4], [False, 1], [False, 4], [True, 2], [True, 3]]
@@ -139,6 +141,17 @@ def main(n, home):
     currlegs = 1
     currboots = 1
     currskin = 1
+    font = pygame.font.SysFont('Courier', 40)  # шрифт вводимого текста
+    input_box = pygame.Rect(800, 500, 150, 42)  # поле ввода текста
+    color_inactive = pygame.Color('lightskyblue3')  # цвет поля ввода, когда оно неактивно
+    color_active = (166, 97, 181)  # когда активно
+    color = color_inactive
+    active = False  # активно ли поле ввода в данный момент
+    text = ''  # текст, который вводит игрок
+    alphabet = "abcdefghijklmnopqrstuvwxyzабвгдеёжзийклмнопрстуфхцчшщъыьэюя' -"  # допустимые для ввода знаки
+    cur_char = 0  # позиция в фразе, после которой печатается текст (изначально - начало слова)
+    pointer = 0  # как часто мигает текстовый курсор
+    showpointer = True  # виден ли сейчас курсор
 
     while exit:
         screen.blit(background, background_rect)
@@ -146,12 +159,28 @@ def main(n, home):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit = False
-                background = Image.open("test1.png")
-                foreground = Image.open("test2.png")
-
-                background.paste(foreground, (0, 0), foreground)
-                background.show()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    exit = False
+                if active:
+                    if event.key == pygame.K_BACKSPACE:  # стирание символов
+                        if cur_char != 0:  # если позиция ввода - начало фразы, стирать нечего, иначе стирается
+                            text = text[:cur_char - 1] + text[cur_char:]
+                            cur_char = cur_char - 1
+                    elif event.key == pygame.K_LEFT:  # перемещение влево по введенной фразе
+                        if cur_char != 0:
+                            cur_char = cur_char - 1
+                    elif event.key == pygame.K_RIGHT:  # вправо
+                        if cur_char != len(text):
+                            cur_char = cur_char + 1
+                    elif event.unicode.lower() in alphabet and event.unicode != '':  # ввод букв
+                        text = text[:cur_char] + event.unicode + text[cur_char:]
+                        cur_char = cur_char + 1
             if event.type == pygame.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(event.pos):  # проверяется, нажал ли игрок на поле ввода текста
+                    active = not active  # если нажал, ввод активируется
+                else:
+                    active = False
                 if nextarr.rect.collidepoint(event.pos):
                     exit = False
                     skin = Image.open(f'sprites/skin{currskin}.png')
@@ -167,10 +196,32 @@ def main(n, home):
                     sheet = Image.alpha_composite(sheet, body)
                     sheet.save(f"sprites/spritesheet{n}.png")
                     with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
-                        f.write('name=The Name;')
-                    home(n)
+                        f.write(f'{text};')
+                        for i in range(2):
+                            skin = Image.open(f'sprites/skin{random.randrange(1, 8)}.png')
+                            hair = Image.open(f'sprites/hair{random.randrange(1, 17)}.png')
+                            boots = Image.open(f'sprites/boots{random.randrange(1, 4)}.png')
+                            legs = Image.open(f'sprites/legs{random.randrange(1, 9)}.png')
+                            body = Image.open(f'sprites/body{random.randrange(1, 16)}.png')
+                            sheet = Image.new("RGBA", skin.size)
+                            sheet = Image.alpha_composite(sheet, skin)
+                            sheet = Image.alpha_composite(sheet, hair)
+                            sheet = Image.alpha_composite(sheet, boots)
+                            sheet = Image.alpha_composite(sheet, legs)
+                            sheet = Image.alpha_composite(sheet, body)
+                            sheet.save(f"sprites/npc{n}_{i}.png")
+                        f.write('0;480;home;999;0;0;100;100;100;1894;')
+                        for i in range(7):
+                            schedule_main()
+                            schedule_person()
+                            schedule_final()
+                            f.write(f'{classes[0]}.{classes[1]}.{classes[2]}.{classes[3]}.{classes[4]}')
+                            if i != 6:
+                                f.write(',')
+                        for i in range(8):
+                            f.write('\n')
 
-
+                    home(999, (0, 0), 'menu',)
                 if arrow1.rect.collidepoint(event.pos):
                     currhair -= 1
                     if currhair >= 1:
@@ -279,9 +330,84 @@ def main(n, home):
                     changepiece(legs1, curdir)
                     boots1.image = pygame.image.load(f'sprites/boots{currboots}.png')
                     changepiece(boots1, curdir)
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    exit = False
+                if active:
+                    color = color_active  # смена цвета поля ввода
+                else:
+                    color = color_inactive
+        txt_surface = font.render(text, True, color)
+        # если длина текста больше длины поля ввода текста, оно удлиняется
+        width = max(200, txt_surface.get_width() + 10)
+        input_box.w = width
+        screen.blit(txt_surface, (input_box.x + 2, input_box.y + 2))
+        if active:  # мигание текстового курсора
+            pointer = pointer + 1
+        if pointer == 20:  # он то отрисовывается, то нет
+            pointer = 0
+            showpointer = not showpointer
+        if showpointer:  # отрисовка текстового курсора
+            pygame.draw.line(screen, color,
+                             [input_box.x + 24 * cur_char + 5, input_box.y + 5],
+                             [input_box.x + 24 * cur_char + 5, input_box.y + 35], 1)
+        pygame.draw.rect(screen, color, input_box, 2)
         pygame.display.flip()
         clock.tick(40)
     pygame.quit()
+
+def schedule_main():
+    classes_common = ['Фонетика', 'Морфология', 'Введение в лингвистику', 'Окно']
+    global dict_lessons
+    dict_lessons = {
+    }
+    global x
+    x = random.randrange(1, 5)
+    y = random.choice(classes_common)
+    dict_lessons.update({x: y})
+    global w
+    w = random.randrange(1, 5)
+    while w == x:
+        w = random.randrange(1, 5)
+        if w != x:
+            break
+    q = random.choice(classes_common)
+    dict_lessons.update({w: q})
+
+
+def schedule_person():
+    classes_person = ['Иностранный язык', 'Латинский язык',
+                      'Программирование', 'Окно']
+    if dict_lessons != {}:
+        xx = random.randrange(1, 6)
+        while xx == x or xx == w:
+            xx = random.randrange(1, 6)
+            if xx != x and xx != w:
+                break
+        yy = random.choice(classes_person)
+        dict_lessons.update({xx: yy})
+        ww = random.randrange(1, 6)
+        while ww == xx or ww == x or ww == w:
+            ww = random.randrange(1, 6)
+            if ww != xx and ww != x and ww != w:
+                break
+        qq = random.choice(classes_person)
+        dict_lessons.update({ww: qq})
+        cc = random.randrange(1, 6)
+        while cc == xx or cc == x or cc == w or cc == ww:
+            cc = random.randrange(1, 6)
+            if cc != xx and cc != x and cc != w and cc != ww:
+                break
+        dd = random.choice(classes_person)
+        dict_lessons.update({cc: dd})
+
+
+def schedule_final():
+    global classes
+    classes = {
+        0: dict_lessons[1],
+        1: dict_lessons[2],
+        2: dict_lessons[3],
+        3: dict_lessons[4],
+        4: dict_lessons[5]
+    }
+
+
+classes = {}

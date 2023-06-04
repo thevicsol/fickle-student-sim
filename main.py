@@ -93,6 +93,10 @@ class NPC(Player):
     def __init__(self, color, id, coords, path, n):
         super().__init__(color, n)
         self.id = id  # айди нпс
+        self.sheet = pygame.transform.scale(pygame.image.load(f'sprites/npc{n}_{id}.png'), (292, 910))  # лист спрайтов
+        self.image = self.sheet.subsurface(pygame.Rect((0, 0), (73, 182)))  # вырезаем кадр из листа спрайтов
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
         self.rect.x = coords[0]
         self.rect.y = coords[1]
         self.path = path  # траектория, по которой идет нпс
@@ -162,6 +166,7 @@ class NPC(Player):
 
 
 def mapupdate(id, neighbours):  # смена отображаемых комнат, когда заходишь в другую комнату
+    global n
     neighwalls = neighbours.copy()  # это просто технический момент, чтобы работал алгоритм
     xylist = {}
     for room in map:  # удаляем те комнаты, которые больше не соседние
@@ -193,7 +198,7 @@ def mapupdate(id, neighbours):  # смена отображаемых комна
             for key in npclist[roomid].keys():
                 if key not in npcids:
                     npc_2 = NPC((255, 0, 0), key, (xylist[roomid][0] + npclist[roomid][key][0],
-                                                   xylist[roomid][1] + npclist[roomid][key][1]), paths[key], 1)
+                                                   xylist[roomid][1] + npclist[roomid][key][1]), paths[key], n)
                     studentgroup.add(npc_2)
     if id in wallist.keys():  # добавляем стены текущей комнаты
         for wallid in wallist[id]['in']:
@@ -205,6 +210,167 @@ def mapupdate(id, neighbours):  # смена отображаемых комна
             objects.add(obj)
 
 
+class Timer:
+    def __init__(self, duration, func=None):
+        self.duration = duration
+        self.func = func
+        self.start_time = 0
+        self.active = False
+
+    def activate(self):
+        self.active = True
+        self.start_time = pygame.time.get_ticks()
+
+    def deactivate(self):
+        self.active = False
+        self.start_time = 0
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.start_time >= self.duration:
+            if self.func and self.start_time != 0:
+                self.func()
+            self.deactivate()
+
+
+class Shop:
+    def __init__(self, text, width, height, pos, elevation):
+        self.pressed = False
+        self.elevation = elevation
+        self.dynamic_elevation = elevation
+        self.original_y_pos = pos[1]
+
+        self.top_rect = pygame.Rect(pos, (width, height))
+        self.top_color = "#40E0D0"
+
+        self.bottom_rect = pygame.Rect(pos, (width, elevation))
+        self.bottom_color = "#DFFF00"
+
+        self.text_surf = font.render(text, True, "white")
+        self.text_rect = self.text_surf.get_rect(center=self.top_rect.center)
+
+    def draw(self):
+        self.top_rect.y = self.original_y_pos - self.dynamic_elevation
+        self.text_rect.center = self.top_rect.center
+
+        self.bottom_rect.midtop = self.top_rect.midtop
+        self.bottom_rect.height = self.top_rect.height + self.dynamic_elevation
+        pygame.draw.rect(screen, self.bottom_color, self.bottom_rect)
+        pygame.draw.rect(screen, self.top_color, self.top_rect)
+        screen.blit(self.text_surf, self.text_rect)
+        self.check_click()
+
+    def check_click(self):
+        global foodmenu
+        mouse_pos = pygame.mouse.get_pos()
+        if self.top_rect.collidepoint(mouse_pos):
+            if pygame.mouse.get_pressed()[0]:
+                self.dynamic_elevation = 0
+                self.top_color = "#FFBF00"
+
+                self.pressed = True
+            else:
+                self.dynamic_elevation = self.elevation
+                if self.pressed == True:
+                    self.pressed = False
+        else:
+            self.dynamic_elevation = self.elevation
+            self.top_color = "#40E0D0"
+
+
+class Food:
+    global food_options
+
+    def __init__(self):
+
+        self.display_surface = pygame.display.get_surface()
+
+        self.width = 400
+        self.space = 10
+        self.padding = 8
+        self.options = list(food_options.keys())
+        self.setup()
+        self.index = 0
+
+        self.timer = Timer(200)
+
+    def input(self):
+
+        keys = pygame.key.get_pressed()
+        self.timer.update()
+        if not self.timer.active:
+            if keys[pygame.K_UP]:
+                self.index -= 1
+                self.timer.activate()
+            if keys[pygame.K_DOWN]:
+                self.index += 1
+                self.timer.activate()
+        if keys[pygame.K_SPACE]:
+            global money_wallet
+            self.timer.activate()
+            current_food = self.options[self.index]
+            price = prices[current_food]
+            if money_wallet >= price:
+                money_wallet -= prices[current_food]
+                fullness(nutrients[current_food])
+
+        if self.index < 0:
+            self.index = len(self.options) - 1
+        if self.index > len(self.options) - 1:
+            self.index = 0
+
+    def setup(self):
+        self.text_surfs = []
+        self.total_height = 0
+        for item in self.options:
+            text_surf = font.render(item, True, pygame.Color("black"))
+            self.text_surfs.append(text_surf)
+            self.total_height += text_surf.get_height() + (self.padding * 2)
+        self.total_height += (len(self.text_surfs) - 1) * self.space
+        self.menu_top = HEIGHT / 2 - self.total_height / 2
+        self.main_rect = pygame.Rect(WIDTH / 2 - self.width / 2, self.menu_top, self.width, self.total_height)
+
+        self.image_food = pygame.image.load("sprites/06_apple_pie_dish.png")
+        self.image_food_2 = pygame.image.load("sprites/94_spaghetti.png")
+        self.image_food_3 = pygame.image.load("sprites/82_pizza_dish.png")
+        self.image_food_4 = pygame.image.load("sprites/33_curry_dish.png")
+        self.image_food_5 = pygame.image.load("sprites/banana.png")
+
+    def show_entry(self, text_surf, amount, top, selected):
+        bg_rect = pygame.Rect(self.main_rect.left, top, self.width, text_surf.get_height() + (self.padding * 2))
+        pygame.draw.rect(self.display_surface, "white", bg_rect, 0, 4)
+        text_rect = text_surf.get_rect(midleft=(self.main_rect.left + 20, bg_rect.centery))
+        self.display_surface.blit(text_surf, text_rect)
+        amount_surf = font.render(str(amount), True, "black")
+        amount_rect = amount_surf.get_rect(midright=(self.main_rect.right - 20, bg_rect.centery))
+        screen.blit(amount_surf, amount_rect)
+        if selected:
+            pygame.draw.rect(self.display_surface, "black", bg_rect, 4, 4)
+            if self.index == 1:
+                pos_rect = self.image_food.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food, pos_rect)
+            if self.index == 2:
+                pos_rect_2 = self.image_food_2.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_2, pos_rect_2)
+            if self.index == 0:
+                pos_rect_3 = self.image_food_3.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_3, pos_rect_3)
+            if self.index == 3:
+                pos_rect_4 = self.image_food_4.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_4, pos_rect_4)
+            if self.index == 4:
+                pos_rect_5 = self.image_food_5.get_rect(midleft=(self.main_rect.left + 270, bg_rect.centery))
+                self.display_surface.blit(self.image_food_5, pos_rect_5)
+
+    def update(self):
+        self.input()
+        for text_index, text_surf in enumerate(self.text_surfs):
+            top = self.main_rect.top + text_index * (text_surf.get_height() + (self.padding * 2) + self.space)
+            amount_list = list(food_options.values())
+            amount = amount_list[text_index]
+            self.show_entry(text_surf, amount, top, self.index == text_index)
+
+
 pygame.init()
 
 
@@ -212,6 +378,19 @@ size = (WIDTH, HEIGHT)
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("fickle-student-sim")
 font = pygame.font.SysFont("comicsansms", 25)
+
+button = Shop("Магазин", 100, 40, (850, 580), 6)
+food_options = {"пицца": 150, "яблочный пирог": 120, "спагетти": 100, "карри": 100, "банан": 30}
+prices = {"пицца": 150, "яблочный пирог": 120, "спагетти": 100, "карри": 100, "банан": 30}
+nutrients = {"пицца": 10, "яблочный пирог": 50, "спагетти": 20, "карри": 20, "банан": 5}
+foodmenu = Food()
+game_paused = False
+
+
+def toggle_menu():
+    global game_paused
+    game_paused = not game_paused
+
 
 all_sprites_list = pygame.sprite.Group()
 map = pygame.sprite.Group()  # полы комнат
@@ -222,7 +401,8 @@ studentgroup = pygame.sprite.Group()  # npc
 collision = pygame.sprite.Group()  # неотображаемые рамки для столкновения со стенами
 rooms = {0: {1: (-38, 752), 6: (-1040, -90)}, 1: {0: (38, -752), 2: (440, 420)}, 2: {1: (-440, -420), 3: (-876, -85)},
          3: {2: (876, 85), 4: (-333, 420), 5: (-1569, 209)}, 4: {3: (333, -420)},
-         5: {3: (1569, -209), 6: (1005, -1385)}, 6: {5: (-1005, 1385), 0: (1040, 90)}}
+         5: {3: (1569, -209), 6: (1005, -1385)}, 6: {5: (-1005, 1385), 0: (1040, 90)},
+         999: {}}
 dots = {0: [0, (1000, 180)], 1: [0, (550, 180)], 2: [0, (470, 100)], 3: [0, (720, 80)],
         4: [5, (1000, 1380)], 5: [5, (550, 1380)], 6: [5, (470, 1300)], 7: [5, (720, 1180)],
         8: [6, (255, 0)], 9: [6, (444, 41)]}
@@ -230,15 +410,18 @@ paths = {0: [0, 1, 2, 3, 8, 9, 8, 3], 1: [4, 5, 6, 7]}
 ''' словарь точек. в кажом соответствующем точке списке первый аргумент - комната, внутри которой точка, второй - 
 координаты точки относительно левого верхнего угла комнаты'''
 #  для каждой комнаты здесь указано, на каком расстоянии от нее находятся соседние ей комнаты
-wallist = {2: {'out': {1: (2, 3), 3: (0, 2)}, 'in': (0, 1), 0: (4, -439), 1: (831, -439), 2: (4, -439), 3: (246, -20)}}
+wallist = {2: {'out': {1: (2, 3), 3: (0, 2)}, 'in': (0, 1), 0: (4, -439), 1: (831, -439), 2: (4, -439), 3: (246, -20)},
+           999: {'in': (0, 1), 0: (0, -485), 1: (594, -485)}}
 """  для комнат, у которых есть стены, указывается, какие стены отображаются при нахождении в соседних комнатах и 
 непосредственно внутри данной, а также расстояние между левым верхним углом пола и верхним левым углом каждой стены """
-objlist = {5: {0: (1255, 1156)}}  # то же самое, что со стенами, но объекты видно только при нахождении в данной комнате
+objlist = {5: {0: (1255, 1156)},
+           999: {0: (222, -71), 1: (723, 39), 2: (1176, 230)}}  # то же самое, что со стенами, но объекты видно только при нахождении в данной комнате
 npclist = {0: {0: (500, 240)}, 5: {1: (500, 240)}}  # словарь нпс, ключи - комнаты, в которых нпс спавнятся, и id нпс
 
 
 def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
-    global minute, second, time1, grades, n
+    global minute, second, time1, grades, n, speed, speedlist, current_day, current_hunger, current_sleep
+    global current_socialize, money_wallet, game_paused
     n = then
     for room in map:
         room.kill()
@@ -262,7 +445,7 @@ def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
     player.rect.x = 400
     player.rect.y = 240
     
-    background = pygame.image.load('sprites/bg.jpg').convert()
+    background = pygame.image.load('sprites/hsebg.jpg').convert()
     background_rect = background.get_rect()
     
     playergroup.add(player)
@@ -273,6 +456,7 @@ def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
     curroom = firstid  # id текущей комнаты
     animatecount = -1
     if firstid == 0 and wherefrom != 'pause':
+        studentgroup.empty()
         npc_0 = NPC((255, 0, 0), 0, (500, 240), paths[0], n)
         studentgroup.add(npc_0)
     if 'lesson' in wherefrom:
@@ -294,22 +478,64 @@ def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
     pauseBtn.rect.y = 50
     sprites.add(pauseBtn)
     countseconds = 0
+
+    arrow1 = pygame.sprite.Sprite()
+    arrow1.image = pygame.transform.scale(pygame.image.load("sprites/arrow_left.png"), (40, 40))
+    arrow1.rect = arrow1.image.get_rect()
+    arrow1.rect.x = 350
+    arrow1.rect.y = 580
+    sprites.add(arrow1)
+    arrow2 = pygame.sprite.Sprite()
+    arrow2.image = pygame.transform.scale(pygame.image.load("sprites/arrow_right.png"), (40, 40))
+    arrow2.rect = arrow2.image.get_rect()
+    arrow2.rect.x = 400
+    arrow2.rect.y = 580
+    sprites.add(arrow2)
     
     while exit:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                savedata = data[0].split(';')
+                savedata[1] = str(current_day)
+                savedata[2] = str(time1)
+                savedata[3] = 'hse'
+                savedata[4] = str(curroom)
+                savedata[5] = str(mapxys[curroom][0])
+                savedata[6] = str(mapxys[curroom][1])
+                savedata[7] = str(current_sleep)
+                savedata[8] = str(current_hunger)
+                savedata[9] = str(current_socialize)
+                savedata[10] = str(money_wallet)
+                data[0] = ';'.join(savedata)
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 exit = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_x:
+                if event.key == pygame.K_h:
                     exit = False
-                elif event.key == pygame.K_h:
-                    exit = False
-                    home()
+                    home(999, (0, 0), 'hse', n)
+                elif event.key == pygame.K_ESCAPE:
+                    if game_paused:
+                        toggle_menu()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pauseBtn.rect.collidepoint(event.pos):
-                    exit = False
-                    pause_menu(hse, (curroom, mapxys[curroom], n))
-    
+                    if not game_paused:
+                        exit = False
+                        pause_menu(hse, (curroom, mapxys[curroom], n))
+                if arrow1.rect.collidepoint(event.pos):
+                    if speedlist.index(speed) != 0:
+                        speed = speedlist[speedlist.index(speed) - 1]
+                if arrow2.rect.collidepoint(event.pos):
+                    if speedlist.index(speed) != 3:
+                        speed = speedlist[speedlist.index(speed) + 1]
+                if curroom == 5:
+                    for obj in objects:
+                        if obj.typen == 0 and obj.rect.collidepoint(event.pos):
+                            toggle_menu()
+
         front = pygame.sprite.Group()  # объекты, находящиеся перед игроком, следовательно, рисующиеся поверх него
         animatecount = animatecount + 1  # счетчик, отвечающий за скорость анимации - она сменяется каждый третий кадр
         if animatecount == 3:
@@ -317,105 +543,113 @@ def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
         keys = pygame.key.get_pressed()
         direction = ''  # нажатые пользователем стрелки
         cango = set()  # множество направлений, в которые может двигаться игрок в данный кадр
-        for room in map:  # если игрок с какой-то стороны заходит за пределы пола, он не может идти в этом направлении
-            roomgo = 0
-            if pygame.sprite.spritecollide(colleft, [room], False, pygame.sprite.collide_mask):
-                cango.add('r')  # проверяется, что игрок пересекается с полом, т.е. находится на нем
-                roomgo += 1
-            if pygame.sprite.spritecollide(collright, [room], False, pygame.sprite.collide_mask):
-                cango.add('l')
-                roomgo += 1
-            if pygame.sprite.spritecollide(colldown, [room], False, pygame.sprite.collide_mask):
-                cango.add('d')
-                roomgo += 1
-            if pygame.sprite.spritecollide(collup, [room], False, pygame.sprite.collide_mask):
-                cango.add('u')
-                roomgo += 1
-            if roomgo == 4:
-                if room.id != curroom:  # если комната не равна текущей, значит, игрок зашел в другую и надо обновить карту
-                    curroom = room.id
-                    mapupdate(curroom, room.neighbours.copy())  # передается id новой текущей комнаты и список соседних
-        for wall in walls:  # столкновение именно со стенами, где они есть - на тестовой карте это 2 дверных проема
-            if pygame.sprite.spritecollide(collright, [wall], False, pygame.sprite.collide_mask):
-                cango.discard('l')
-            if pygame.sprite.spritecollide(collupwall, [wall], False, pygame.sprite.collide_mask):
-                cango.discard('u')
-        mapxys = {}
-        if keys[pygame.K_LEFT] and 'r' in cango:  # перемещение игрока в тех направлениях, в которых можно двигаться
-            for sprite in map:
-                sprite.moveRight(5)
-            for sprite in walls:
-                sprite.moveRight(5)
-            for sprite in objects:
-                sprite.moveRight(5)
-            for sprite in studentgroup:
-                sprite.moveRight(5)
-            direction = 'r'
-        if keys[pygame.K_RIGHT] and 'l' in cango:
-            for sprite in map:
-                sprite.moveLeft(5)
-            for sprite in walls:
-                sprite.moveLeft(5)
-            for sprite in objects:
-                sprite.moveLeft(5)
-            for sprite in studentgroup:
-                sprite.moveLeft(5)
-            direction = 'l'
-        if keys[pygame.K_DOWN] and 'd' in cango:
-            for sprite in map:
-                sprite.moveBack(5)
-            for sprite in walls:
-                sprite.moveBack(5)
-            for sprite in objects:
-                sprite.moveBack(5)
-            for sprite in studentgroup:
-                sprite.moveBack(5)
-            direction += 'd'
-        if keys[pygame.K_UP] and 'u' in cango:
-            for sprite in map:
-                sprite.moveForward(5)
-            for sprite in walls:
-                sprite.moveForward(5)
-            for sprite in objects:
-                sprite.moveForward(5)
-            for sprite in studentgroup:
-                sprite.moveForward(5)
-            direction += 'u'
-        for sprite in map:
-            mapxys[sprite.id] = (sprite.rect.x, sprite.rect.y)  # собираем координаты комнат
-        if len(direction) > 2:  # если нажато более 2 стрелок одновременно, учитываются только 2 из них
-            direction = direction[:1]
-        if 'du' in direction:  # если нажаты и вверх, и вниз, одно из этих направлений не учитывается
-            direction = direction[:-2]
-        if direction != '':  # смена анимации
-            if animatecount == 0:
-                player.animate(direction)
-        elif player.dir != '':  # если игрок не перемещается, включается анимация стояния
-            player.animate(player.dir, True)
-        for obj in objects:  # если игрок оказывается за объектом, объект рисуется поверх, иначе сверху рисуется игрок
-            if obj.rect.bottom - 5 > player.rect.bottom:
-                front.add(obj)
-        for i in studentgroup:  # то же, что с объектами, только с нпс
-            if i.rect.bottom - 5 > player.rect.bottom:
-                front.add(i)
-            i.move(mapxys, animatecount)  # движение нпс по траекториям
+
+        button.draw()
         all_sprites_list.update()
         screen.fill((0, 0, 0))
         screen.blit(background, background_rect)
         all_sprites_list.draw(screen)
         map.draw(screen)
         walls.draw(screen)
-        objects.draw(screen)
-        studentgroup.draw(screen)
-        playergroup.draw(screen)
-        front.draw(screen)
         sprites.draw(screen)
-        countseconds = countseconds + 1
-        if countseconds == 30:
-            countseconds = 0
+        if game_paused:
+            foodmenu.update()
+        else:
+            for room in map:  # если игрок с какой-то стороны заходит за пределы пола, он не может идти в этом направлении
+                roomgo = 0
+                if pygame.sprite.spritecollide(colleft, [room], False, pygame.sprite.collide_mask):
+                    cango.add('r')  # проверяется, что игрок пересекается с полом, т.е. находится на нем
+                    roomgo += 1
+                if pygame.sprite.spritecollide(collright, [room], False, pygame.sprite.collide_mask):
+                    cango.add('l')
+                    roomgo += 1
+                if pygame.sprite.spritecollide(colldown, [room], False, pygame.sprite.collide_mask):
+                    cango.add('d')
+                    roomgo += 1
+                if pygame.sprite.spritecollide(collup, [room], False, pygame.sprite.collide_mask):
+                    cango.add('u')
+                    roomgo += 1
+                if roomgo == 4:
+                    if room.id != curroom:  # если комната не равна текущей, значит, игрок зашел в другую и надо обновить карту
+                        curroom = room.id
+                        mapupdate(curroom, room.neighbours.copy())  # передается id новой текущей комнаты и список соседних
+            for wall in walls:  # столкновение именно со стенами, где они есть - на тестовой карте это 2 дверных проема
+                if pygame.sprite.spritecollide(collright, [wall], False, pygame.sprite.collide_mask):
+                    cango.discard('l')
+                if pygame.sprite.spritecollide(collupwall, [wall], False, pygame.sprite.collide_mask):
+                    cango.discard('u')
+            mapxys = {}
+            if keys[pygame.K_LEFT] and 'r' in cango:  # перемещение игрока в тех направлениях, в которых можно двигаться
+                for sprite in map:
+                    sprite.moveRight(5)
+                for sprite in walls:
+                    sprite.moveRight(5)
+                for sprite in objects:
+                    sprite.moveRight(5)
+                for sprite in studentgroup:
+                    sprite.moveRight(5)
+                direction = 'r'
+            if keys[pygame.K_RIGHT] and 'l' in cango:
+                for sprite in map:
+                    sprite.moveLeft(5)
+                for sprite in walls:
+                    sprite.moveLeft(5)
+                for sprite in objects:
+                    sprite.moveLeft(5)
+                for sprite in studentgroup:
+                    sprite.moveLeft(5)
+                direction = 'l'
+            if keys[pygame.K_DOWN] and 'd' in cango:
+                for sprite in map:
+                    sprite.moveBack(5)
+                for sprite in walls:
+                    sprite.moveBack(5)
+                for sprite in objects:
+                    sprite.moveBack(5)
+                for sprite in studentgroup:
+                    sprite.moveBack(5)
+                direction += 'd'
+            if keys[pygame.K_UP] and 'u' in cango:
+                for sprite in map:
+                    sprite.moveForward(5)
+                for sprite in walls:
+                    sprite.moveForward(5)
+                for sprite in objects:
+                    sprite.moveForward(5)
+                for sprite in studentgroup:
+                    sprite.moveForward(5)
+                direction += 'u'
+            for sprite in map:
+                mapxys[sprite.id] = (sprite.rect.x, sprite.rect.y)  # собираем координаты комнат
+            if len(direction) > 2:  # если нажато более 2 стрелок одновременно, учитываются только 2 из них
+                direction = direction[:1]
+            if 'du' in direction:  # если нажаты и вверх, и вниз, одно из этих направлений не учитывается
+                direction = direction[:-2]
+            if direction != '':  # смена анимации
+                if animatecount == 0:
+                    player.animate(direction)
+            elif player.dir != '':  # если игрок не перемещается, включается анимация стояния
+                player.animate(player.dir, True)
+            for obj in objects:  # если игрок оказывается за объектом, объект рисуется поверх, иначе сверху рисуется игрок
+                if obj.rect.bottom - 5 > player.rect.bottom:
+                    front.add(obj)
+            for i in studentgroup:  # то же, что с объектами, только с нпс
+                i.move(mapxys, animatecount)  # движение нпс по траекториям
+                if i.rect.bottom - 5 > player.rect.bottom:
+                    front.add(i)
 
-        draw_time(countseconds)
+            countseconds = countseconds + 1
+            if countseconds >= speed:
+                countseconds = 0
+            draw_time(countseconds)
+            studentgroup.draw(screen)
+            objects.draw(screen)
+            playergroup.draw(screen)
+            front.draw(screen)
+
         health()
+        money(money_wallet)
+        tm()
 
         for lesson in limits:
             if dict_classes[lesson[2]] != 'Окно':
@@ -423,14 +657,294 @@ def hse(firstid, firstcoords, wherefrom, then, timegot=(0, 0, 0), grade=-1):
                 maxtime = lesson[1][0] * 60 + lesson[1][1]
                 if mintime <= time1 <= maxtime and curroom == dict_rooms[dict_classes[lesson[2]]]:
                     exit = False
+                    with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    savedata = data[0].split(';')
+                    savedata[1] = str(current_day)
+                    savedata[2] = str(time1)
+                    savedata[3] = 'hse'
+                    savedata[4] = str(curroom)
+                    savedata[5] = str(mapxys[curroom][0])
+                    savedata[6] = str(mapxys[curroom][1])
+                    savedata[7] = str(current_sleep)
+                    savedata[8] = str(current_hunger)
+                    savedata[9] = str(current_socialize)
+                    savedata[10] = str(money_wallet)
+                    data[0] = ';'.join(savedata)
+                    with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                        for line in data:
+                            f.writelines(line)
                     studying(hse, (curroom, mapxys[curroom], n), curroom)
 
         pygame.display.flip()
         clock.tick(30)  # скорость перемещения
 
 
-def home(n):  # сцена дома
+def home(roomid, coords, wherefrom, then):  # сцена дома
+    global minute, second, time1, grades, n, speed, speedlist, current_day, current_hunger, current_sleep
+    global current_socialize, money_wallet, game_paused, dict_classes
+    if wherefrom == 'bed':
+        with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+            data = f.readlines()
+        savedata = data[0][:-1].split(';')
+        time1 = int(savedata[2])
+        minute = time1 // 60
+        second = time1 % 60
+        current_day = int(savedata[1])
+        scheds = savedata[11].split(',')
+        current_sleep = int(savedata[7])
+        todaysch = scheds[current_day].split('.')
+        dict_classes = {
+            '09:30-10:50': todaysch[0],
+            '11:10-12:30': todaysch[1],
+            '13:00-14:20': todaysch[2],
+            '14:40-16:00': todaysch[3],
+            '16:20-17:40': todaysch[4]
+        }
+        for i in range(6):
+            if data[i + 1] != '\n':
+                graden = data[i + 1][:-1].split(',')
+                grades[inds_dict[i + 1]] = []
+                for j in range(len(graden)):
+                    grades[inds_dict[i + 1]].append(int(graden[j]))
+    n = then
+    for room in map:
+        room.kill()
+    playergroup.empty()
+    studentgroup.empty()
+    objects.empty()
+    walls.empty()
+
+    player = Player((255, 0, 0), n)
+    collup = CollisionMask((255, 0, 0), 'sprites/collup.png')
+    collision.add(collup)
+    colldown = CollisionMask((255, 0, 0), 'sprites/colldown.png')
+    collision.add(colldown)
+    colleft = CollisionMask((255, 0, 0), 'sprites/colleft.png')
+    collision.add(colleft)
+    collright = CollisionMask((255, 0, 0), 'sprites/collright.png')
+    collision.add(collright)
+
+    for sprite in collision:
+        sprite.rect.x = 400
+        sprite.rect.y = 240
+    player.rect.x = 400
+    player.rect.y = 240
+
+    background = pygame.image.load('sprites/homebg.jpg').convert()
+    background_rect = background.get_rect()
+
+    playergroup.add(player)
+    room0 = RoomElement(999, None, None)
+    room0.rect.x = coords[0]
+    room0.rect.y = coords[1]
+    map.add(room0)
+    wall0 = RoomElement(999, 999, wallist[999][0], rtype='wall', typen=0)
+    walls.add(wall0)
+    wall1 = RoomElement(999, 999, wallist[999][1], rtype='wall', typen=1)
+    walls.add(wall1)
+    door = RoomElement(999, 999, objlist[999][0], rtype='obj', typen=0)
+    objects.add(door)
+    bed = RoomElement(999, 999, objlist[999][1], rtype='obj', typen=1)
+    objects.add(bed)
+    order = RoomElement(999, 999, objlist[999][2], rtype='obj', typen=2)
+    objects.add(order)
+    curroom = 999
+    animatecount = -1
     exit = True
+    clock = pygame.time.Clock()
+
+    sprites = pygame.sprite.Group()
+
+    pauseBtn = pygame.sprite.Sprite()
+    pauseBtn.image = pygame.image.load("sprites/pause.png")
+    pauseBtn.rect = pauseBtn.image.get_rect()
+    pauseBtn.rect.x = 50
+    pauseBtn.rect.y = 50
+    sprites.add(pauseBtn)
+    countseconds = 0
+
+    arrow1 = pygame.sprite.Sprite()
+    arrow1.image = pygame.transform.scale(pygame.image.load("sprites/arrow_left.png"), (40, 40))
+    arrow1.rect = arrow1.image.get_rect()
+    arrow1.rect.x = 350
+    arrow1.rect.y = 580
+    sprites.add(arrow1)
+    arrow2 = pygame.sprite.Sprite()
+    arrow2.image = pygame.transform.scale(pygame.image.load("sprites/arrow_right.png"), (40, 40))
+    arrow2.rect = arrow2.image.get_rect()
+    arrow2.rect.x = 400
+    arrow2.rect.y = 580
+    sprites.add(arrow2)
+
+    while exit:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                savedata = data[0].split(';')
+                savedata[1] = str(current_day)
+                savedata[2] = str(time1)
+                savedata[3] = 'home'
+                savedata[4] = str(curroom)
+                savedata[5] = str(room0.rect.x)
+                savedata[6] = str(room0.rect.y)
+                savedata[7] = str(current_sleep)
+                savedata[8] = str(current_hunger)
+                savedata[9] = str(current_socialize)
+                savedata[10] = str(money_wallet)
+                data[0] = ';'.join(savedata)
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
+                exit = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    if door.rect.collidepoint((player.rect.x, player.rect.y)):
+                        with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                            data = f.readlines()
+                        savedata = data[0].split(';')
+                        savedata[1] = str(current_day)
+                        savedata[2] = str(time1)
+                        savedata[3] = 'hse'
+                        savedata[4] = str(curroom)
+                        savedata[5] = str(room0.rect.x)
+                        savedata[6] = str(room0.rect.y)
+                        savedata[7] = str(current_sleep)
+                        savedata[8] = str(current_hunger)
+                        savedata[9] = str(current_socialize)
+                        savedata[10] = str(money_wallet)
+                        data[0] = ';'.join(savedata)
+                        with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                            for line in data:
+                                f.writelines(line)
+                        exit = False
+                        hse(0, (0, 0), 'home', n)
+                    elif bed.rect.collidepoint((player.rect.x, player.rect.y)):
+                        with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                            data = f.readlines()
+                        savedata = data[0].split(';')
+                        savedata[1] = str(current_day + 1)
+                        savedata[2] = '480'
+                        savedata[3] = 'home'
+                        savedata[4] = str(curroom)
+                        savedata[5] = str(room0.rect.x)
+                        savedata[6] = str(room0.rect.y)
+                        savedata[7] = '100'
+                        savedata[8] = str(current_hunger)
+                        savedata[9] = str(current_socialize)
+                        savedata[10] = str(money_wallet)
+                        data[0] = ';'.join(savedata)
+                        with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                            for line in data:
+                                f.writelines(line)
+                        exit = False
+                        home(999, (0, 0), 'bed', n)  # переключает сцену
+                elif event.key == pygame.K_ESCAPE:
+                    if game_paused:
+                        toggle_menu()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if pauseBtn.rect.collidepoint(event.pos):
+                    if not game_paused:
+                        exit = False
+                        pause_menu(home, (999, (room0.rect.x, room0.rect.y), n))
+                if arrow1.rect.collidepoint(event.pos):
+                    if speedlist.index(speed) != 0:
+                        speed = speedlist[speedlist.index(speed) - 1]
+                if arrow2.rect.collidepoint(event.pos):
+                    if speedlist.index(speed) != 3:
+                        speed = speedlist[speedlist.index(speed) + 1]
+                if order.rect.collidepoint(event.pos) and order.rect.collidepoint((player.rect.x, player.rect.y)):
+                    toggle_menu()
+
+        animatecount = animatecount + 1  # счетчик, отвечающий за скорость анимации - она сменяется каждый третий кадр
+        if animatecount == 3:
+            animatecount = 0
+        keys = pygame.key.get_pressed()
+        direction = ''  # нажатые пользователем стрелки
+        cango = set()  # множество направлений, в которые может двигаться игрок в данный кадр
+        button.draw()
+        all_sprites_list.update()
+        screen.fill((0, 0, 0))
+        screen.blit(background, background_rect)
+        all_sprites_list.draw(screen)
+        map.draw(screen)
+        walls.draw(screen)
+        objects.draw(screen)
+        playergroup.draw(screen)
+        sprites.draw(screen)
+        draw_time(countseconds)
+        if game_paused:
+            foodmenu.update()
+        else:
+            for room in map:  # если игрок с какой-то стороны заходит за пределы пола, он не может идти в этом направлении
+                roomgo = 0
+                if pygame.sprite.spritecollide(colleft, [room], False, pygame.sprite.collide_mask):
+                    cango.add('r')  # проверяется, что игрок пересекается с полом, т.е. находится на нем
+                    roomgo += 1
+                if pygame.sprite.spritecollide(collright, [room], False, pygame.sprite.collide_mask):
+                    cango.add('l')
+                    roomgo += 1
+                if pygame.sprite.spritecollide(colldown, [room], False, pygame.sprite.collide_mask):
+                    cango.add('d')
+                    roomgo += 1
+                if pygame.sprite.spritecollide(collup, [room], False, pygame.sprite.collide_mask):
+                    cango.add('u')
+                    roomgo += 1
+                if roomgo == 4:
+                    if room.id != curroom:  # если комната не равна текущей, значит, игрок зашел в другую и надо обновить карту
+                        curroom = room.id
+                        mapupdate(curroom, room.neighbours.copy())  # передается id новой текущей комнаты и список соседних
+            if keys[pygame.K_LEFT] and 'r' in cango:  # перемещение игрока в тех направлениях, в которых можно двигаться
+                for sprite in map:
+                    sprite.moveRight(5)
+                for sprite in walls:
+                    sprite.moveRight(5)
+                for sprite in objects:
+                    sprite.moveRight(5)
+                direction = 'r'
+            if keys[pygame.K_RIGHT] and 'l' in cango:
+                for sprite in map:
+                    sprite.moveLeft(5)
+                for sprite in walls:
+                    sprite.moveLeft(5)
+                for sprite in objects:
+                    sprite.moveLeft(5)
+                direction = 'l'
+            if keys[pygame.K_DOWN] and 'd' in cango:
+                for sprite in map:
+                    sprite.moveBack(5)
+                for sprite in walls:
+                    sprite.moveBack(5)
+                for sprite in objects:
+                    sprite.moveBack(5)
+                direction += 'd'
+            if keys[pygame.K_UP] and 'u' in cango:
+                for sprite in map:
+                    sprite.moveForward(5)
+                for sprite in walls:
+                    sprite.moveForward(5)
+                for sprite in objects:
+                    sprite.moveForward(5)
+                direction += 'u'
+            if len(direction) > 2:  # если нажато более 2 стрелок одновременно, учитываются только 2 из них
+                direction = direction[:1]
+            if 'du' in direction:  # если нажаты и вверх, и вниз, одно из этих направлений не учитывается
+                direction = direction[:-2]
+            if direction != '':  # смена анимации
+                if animatecount == 0:
+                    player.animate(direction)
+            elif player.dir != '':  # если игрок не перемещается, включается анимация стояния
+                player.animate(player.dir, True)
+
+            countseconds = countseconds + 1
+            if countseconds >= speed:
+                countseconds = 0
+        health()
+        money(money_wallet)
+        tm()
+        pygame.display.flip()
+        clock.tick(30)  # скорость перемещения
     while exit:
         screen.fill((255, 255, 255))
 
@@ -446,30 +960,11 @@ def home(n):  # сцена дома
         sprites.draw(screen)
         pygame.display.flip()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_x:
-                    exit = False
-                elif event.key == pygame.K_u:
-                    schedule_main()
-                    schedule_person()
-                    schedule_final()
-                    hse(0, (0, 0), 'home', n)  # переключает сцену
-                    exit = False
-                    # scene_change(scene_hse)
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if pauseBtn.rect.collidepoint(event.pos):
-                    exit = False
-                    pause_menu(home, n)
-
 
 limits = [[(9, 30), (10, 50), '09:30-10:50'], [(11, 10), (12, 30), '11:10-12:30'], [(13, 0), (14, 20), '13:00-14:20'],
           [(14, 40), (16, 0), '14:40-16:00'], [(16, 20), (17, 40), '16:20-17:40']]
 max_sleep = 100
-current_sleep = 10
+current_sleep = 100
 bar_topleft = (160, 532)
 bar_max_width = 180
 bar_height = 15
@@ -556,7 +1051,10 @@ weekdays_box = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 minute = 9
 second = 20
 time1 = 560
+tirecount = 0
 n = 0
+speed = 30
+speedlist  = [15, 30, 60, 120]
 current_day = 0
 lessonsattended = []
 money_wallet = 1894
@@ -579,31 +1077,97 @@ dict_rooms = {
     'Программирование': 3,
     'Фонетика': 1
 }
+dict_inds = {
+    'Морфология': 1,
+    'Введение в лингвистику': 2,
+    'Иностранный язык': 3,
+    'Латинский язык': 4,
+    'Программирование': 5,
+    'Фонетика': 6
+}
+inds_dict = {
+    1: 'Морфология',
+    2: 'Введение в лингвистику',
+    3: 'Иностранный язык',
+    4: 'Латинский язык',
+    5: 'Программирование',
+    6: 'Фонетика'
+}
 dict_classes = {}
 
 
 def draw_time(countseconds):
-    global minute, second, current_day, current_module, time1, grades, dict_classes
+    global minute, second, current_day, current_module, time1, grades, dict_classes, speed, tirecount, dict_inds, n
     global output_string
     global date
-    if countseconds == 29:
+    if countseconds == speed - 1:
         time1 = time1 + 1
         minute = time1 // 60  # количество минут = часы в игре
         second = time1 % 60  # количество секунд = минуты в игре
+        tirecount = tirecount + 1
         if time1 == 651 and '09:30-10:50' not in lessonsattended and dict_classes['09:30-10:50'] != 'Окно':
             grades[dict_classes['09:30-10:50']].append(0)
+            with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                data = f.readlines()
+            if data[dict_inds[dict_classes['09:30-10:50']]] == '\n':
+                data[dict_inds[dict_classes['09:30-10:50']]] = f'0\n'
+            else:
+                data[dict_inds[dict_classes['09:30-10:50']]] = data[dict_inds[dict_classes['09:30-10:50']]][:-1] + f',0\n'
+            with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                for line in data:
+                    f.writelines(line)
         if time1 == 751 and '11:10-12:30' not in lessonsattended and dict_classes['11:10-12:30'] != 'Окно':
             grades[dict_classes['11:10-12:30']].append(0)
+            with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                data = f.readlines()
+            if data[dict_inds[dict_classes['11:10-12:30']]] == '\n':
+                data[dict_inds[dict_classes['11:10-12:30']]] = f'0\n'
+            else:
+                data[dict_inds[dict_classes['11:10-12:30']]] = data[dict_inds[dict_classes['11:10-12:30']]][:-1] + f',0\n'
+            with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                for line in data:
+                    f.writelines(line)
         if time1 == 861 and '13:00-14:20' not in lessonsattended and dict_classes['13:00-14:20'] != 'Окно':
             grades[dict_classes['13:00-14:20']].append(0)
+            with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                data = f.readlines()
+            if data[dict_inds[dict_classes['13:00-14:20']]] == '\n':
+                data[dict_inds[dict_classes['13:00-14:20']]] = f'0\n'
+            else:
+                data[dict_inds[dict_classes['13:00-14:20']]] = data[dict_inds[dict_classes['13:00-14:20']]][:-1] + f',0\n'
+            with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                for line in data:
+                    f.writelines(line)
         if time1 == 961 and '14:40-16:00' not in lessonsattended and dict_classes['14:40-16:00'] != 'Окно':
             grades[dict_classes['14:40-16:00']].append(0)
+            with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                data = f.readlines()
+            if data[dict_inds[dict_classes['14:40-16:00']]] == '\n':
+                data[dict_inds[dict_classes['14:40-16:00']]] = f'0\n'
+            else:
+                data[dict_inds[dict_classes['14:40-16:00']]] = data[dict_inds[dict_classes['14:40-16:00']]][:-1] + f',0\n'
+            with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                for line in data:
+                    f.writelines(line)
         if time1 == 1061 and '16:20-17:40' not in lessonsattended and dict_classes['16:20-17:40'] != 'Окно':
             grades[dict_classes['16:20-17:40']].append(0)
+            with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                data = f.readlines()
+            if data[dict_inds[dict_classes['16:20-17:40']]] == '\n':
+                data[dict_inds[dict_classes['16:20-17:40']]] = f'0\n'
+            else:
+                data[dict_inds[dict_classes['16:20-17:40']]] = data[dict_inds[dict_classes['16:20-17:40']]][:-1] + f',0\n'
+            with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                for line in data:
+                    f.writelines(line)
     output_string = "{0:02}:{1:02}".format(minute, second)
     time_surface = font.render(output_string, True, pygame.Color("white"))
     time_rect = time_surface.get_rect(center=(80, 600))
     screen.blit(time_surface, time_rect)
+    if tirecount == 20:
+        tired(10)
+        get_hunger(3)
+        tirecount = 0
 
     date = f"{weekdays_box[current_day]}, {current_module} модуль"
     date_text = font.render(date, True, pygame.Color("white"))
@@ -640,8 +1204,6 @@ def tm():
         current_time = time1
         if current_time - start_time_inv >= invincibility:
             invincible = False
-
-    money(money_wallet), tm()
 
 
 def schedule_main():
@@ -702,7 +1264,7 @@ def schedule_final():
 
 
 def schedule(scene, pars):
-    global dict_classes, grades, dict_rooms
+    global dict_classes, grades, dict_rooms, current_day, time1, n
     sch = str(dict_classes)
     sch1 = sch.replace("'", '')
     sch2 = sch1.replace('{', '')
@@ -719,43 +1281,63 @@ def schedule(scene, pars):
         text1 = mainfont.render(sch4[0], True, (166, 67, 181))
     text1_rect = text1.get_rect()
     text1_rect.x = 350
-    text1_rect.y = 150
+    text1_rect.y = 100
     if dict_classes['11:10-12:30'] != 'Окно':
         text2 = mainfont.render(sch4[1] + ' ауд. ' + str(dict_rooms[dict_classes['11:10-12:30']]), True, (166, 67, 181))
     else:
         text2 = mainfont.render(sch4[1], True, (166, 67, 181))
     text2_rect = text2.get_rect()
     text2_rect.x = 350
-    text2_rect.y = 230
+    text2_rect.y = 180
     if dict_classes['13:00-14:20'] != 'Окно':
         text3 = mainfont.render(sch4[2] + ' ауд. ' + str(dict_rooms[dict_classes['13:00-14:20']]), True, (166, 67, 181))
     else:
         text3 = mainfont.render(sch4[2], True, (166, 67, 181))
     text3_rect = text3.get_rect()
     text3_rect.x = 350
-    text3_rect.y = 310
+    text3_rect.y = 260
     if dict_classes['14:40-16:00'] != 'Окно':
         text4 = mainfont.render(sch4[3] + ' ауд. ' + str(dict_rooms[dict_classes['14:40-16:00']]), True, (166, 67, 181))
     else:
         text4 = mainfont.render(sch4[3], True, (166, 67, 181))
     text4_rect = text4.get_rect()
     text4_rect.x = 350
-    text4_rect.y = 390
+    text4_rect.y = 340
     if dict_classes['16:20-17:40'] != 'Окно':
         text5 = mainfont.render(sch4[4] + ' ауд. ' + str(dict_rooms[dict_classes['16:20-17:40']]), True, (166, 67, 181))
     else:
         text5 = mainfont.render(sch4[4], True, (166, 67, 181))
     text5_rect = text5.get_rect()
     text5_rect.x = 350
-    text5_rect.y = 470
-    text6 = mainfont.render('Оценки: ' + str(grades), True, (166, 67, 181))
-    text6_rect = text5.get_rect()
-    text6_rect.x = 10
-    text6_rect.y = 550
+    text5_rect.y = 420
+    firstrow = str(grades)[1:str(grades).index('Иност') - 2]
+    firstrow = firstrow.replace("'", "")
+    firstrow = firstrow.replace("[", "")
+    firstrow = firstrow.replace("]", "")
+    secondrow = str(grades)[str(grades).index('Иност'):str(grades).index('Прогр') - 2]
+    secondrow = secondrow.replace("'", "")
+    secondrow = secondrow.replace("[", "")
+    secondrow = secondrow.replace("]", "")
+    thirdrow = str(grades)[str(grades).index('Прогр'):-1]
+    thirdrow = thirdrow.replace("'", "")
+    thirdrow = thirdrow.replace("[", "")
+    thirdrow = thirdrow.replace("]", "")
+    text6 = mainfont.render('Оценки: ' + firstrow, True, (166, 67, 181))
+    text6_rect = text6.get_rect()
+    text6_rect.x = 200
+    text6_rect.y = 500
+    text7 = mainfont.render(secondrow, True, (166, 67, 181))
+    text7_rect = text5.get_rect()
+    text7_rect.x = 350
+    text7_rect.y = 550
+    text8 = mainfont.render(thirdrow, True, (166, 67, 181))
+    text8_rect = text5.get_rect()
+    text8_rect.x = 350
+    text8_rect.y = 600
     head = mainfont.render('Расписание', True, (166, 67, 181))
     head_rect = head.get_rect()
     head_rect.x = 540
-    head_rect.y = 70
+    head_rect.y = 20
     button = pygame.sprite.Group()
     backbutton = pygame.sprite.Sprite()  # кнопка открытия инструкции
     backbutton.image = pygame.image.load("sprites/back.png")
@@ -766,6 +1348,26 @@ def schedule(scene, pars):
     while exit:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                savedata = data[0].split(';')
+                savedata[1] = str(current_day)
+                savedata[2] = str(time1)
+                if scene == hse:
+                    savedata[3] = 'hse'
+                else:
+                    savedata[3] = 'home'
+                savedata[4] = str(pars[0])
+                savedata[5] = str(pars[1][0])
+                savedata[6] = str(pars[1][1])
+                savedata[7] = str(current_sleep)
+                savedata[8] = str(current_hunger)
+                savedata[9] = str(current_socialize)
+                savedata[10] = str(money_wallet)
+                data[0] = ';'.join(savedata)
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 exit = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if backbutton.rect.collidepoint(event.pos):  # если нажимается кнопка открытия/закрытия инструкции
@@ -778,6 +1380,8 @@ def schedule(scene, pars):
         screen.blit(text4, text4_rect)
         screen.blit(text5, text5_rect)
         screen.blit(text6, text6_rect)
+        screen.blit(text7, text7_rect)
+        screen.blit(text8, text8_rect)
         screen.blit(head, head_rect)
         button.draw(screen)
         pygame.display.flip()
@@ -877,6 +1481,8 @@ def main_menu():  # сцена главного меню
 
 
 def saves():  # сцена главного меню
+    global time1, minute, second, current_day, dict_classes, grades, current_sleep, current_hunger, current_socialize
+    global money_wallet
 
     exit = True
     screen.fill((200, 255, 255))
@@ -925,15 +1531,74 @@ def saves():  # сцена главного меню
                     if len(data) == 0:
                         character.main(1, home)
                     else:
-                        home(1)
-                    exit = False
+                        savedata = data[0][:-1].split(';')
+                        time1 = int(savedata[2])
+                        minute = time1 // 60
+                        second = time1 % 60
+                        current_day = int(savedata[1])
+                        scheds = savedata[11].split(',')
+                        curroom = int(savedata[4])
+                        curcoords = (int(savedata[5]), int(savedata[6]))
+                        current_sleep = int(savedata[7])
+                        current_hunger = int(savedata[8])
+                        current_socialize = int(savedata[9])
+                        money_wallet = int(savedata[10])
+                        todaysch = scheds[current_day].split('.')
+                        dict_classes = {
+                            '09:30-10:50': todaysch[0],
+                            '11:10-12:30': todaysch[1],
+                            '13:00-14:20': todaysch[2],
+                            '14:40-16:00': todaysch[3],
+                            '16:20-17:40': todaysch[4]
+                        }
+                        for i in range(6):
+                            if data[i + 1] != '\n':
+                                graden = data[i + 1][:-1].split(',')
+                                for j in range(len(graden)):
+                                    grades[inds_dict[i+1]].append(int(graden[j]))
+                        if savedata[3] == 'home':
+                            home(999, curcoords, 'menu', 1)
+                            exit = False
+                        else:
+                            hse(curroom, curcoords, 'home', 1)
+                            exit = False
                 elif playBtn2.rect.collidepoint(event.pos):
                     with open('data/save2.dat', 'r', encoding='utf8') as f:
                         data = f.readlines()
                     if len(data) == 0:
                         character.main(2, home)
                     else:
-                        home(2)
+                        savedata = data[0][:-1].split(';')
+                        time1 = int(savedata[2])
+                        minute = time1 // 60
+                        second = time1 % 60
+                        current_day = int(savedata[1])
+                        scheds = savedata[11].split(',')
+                        curroom = int(savedata[4])
+                        curcoords = (int(savedata[5]), int(savedata[6]))
+                        current_sleep = int(savedata[7])
+                        current_hunger = int(savedata[8])
+                        current_socialize = int(savedata[9])
+                        money_wallet = int(savedata[10])
+                        todaysch = scheds[current_day].split('.')
+                        dict_classes = {
+                            '09:30-10:50': todaysch[0],
+                            '11:10-12:30': todaysch[1],
+                            '13:00-14:20': todaysch[2],
+                            '14:40-16:00': todaysch[3],
+                            '16:20-17:40': todaysch[4]
+                        }
+                        for i in range(6):
+                            if data[i + 1] != '\n':
+                                graden = data[i + 1][:-1].split(',')
+                                for j in range(len(graden)):
+                                    grades[inds_dict[i + 1]].append(int(graden[j]))
+                        if savedata[3] == 'home':
+                            home(999, curcoords, 'menu', 2)
+                            exit = False
+                        else:
+                            hse(curroom, curcoords, 'home', 2)
+                            exit = False
                     exit = False
                 elif playBtn3.rect.collidepoint(event.pos):
                     with open('data/save3.dat', 'r', encoding='utf8') as f:
@@ -941,8 +1606,37 @@ def saves():  # сцена главного меню
                     if len(data) == 0:
                         character.main(3, home)
                     else:
-                        home(3)
-                    saves()
+                        savedata = data[0][:-1].split(';')
+                        time1 = int(savedata[2])
+                        minute = time1 // 60
+                        second = time1 % 60
+                        current_day = int(savedata[1])
+                        scheds = savedata[11].split(',')
+                        curroom = int(savedata[4])
+                        curcoords = (int(savedata[5]), int(savedata[6]))
+                        current_sleep = int(savedata[7])
+                        current_hunger = int(savedata[8])
+                        current_socialize = int(savedata[9])
+                        money_wallet = int(savedata[10])
+                        todaysch = scheds[current_day].split('.')
+                        dict_classes = {
+                            '09:30-10:50': todaysch[0],
+                            '11:10-12:30': todaysch[1],
+                            '13:00-14:20': todaysch[2],
+                            '14:40-16:00': todaysch[3],
+                            '16:20-17:40': todaysch[4]
+                        }
+                        for i in range(6):
+                            if data[i + 1] != '\n':
+                                graden = data[i + 1][:-1].split(',')
+                                for j in range(len(graden)):
+                                    grades[inds_dict[i + 1]].append(int(graden[j]))
+                        if savedata[3] == 'home':
+                            home(999, curcoords, 'menu', 3)
+                            exit = False
+                        else:
+                            hse(curroom, curcoords, 'home', 3)
+                            exit = False
                     exit = False
                 elif quitBtn.rect.collidepoint(event.pos):
                     main_menu()
@@ -950,6 +1644,7 @@ def saves():  # сцена главного меню
 
 
 def pause_menu(scene, pars):
+    global current_day, time1, n, current_sleep, current_hunger, current_socialize, money_wallet
     exit = True
     screen.fill((255, 255, 255))
 
@@ -987,11 +1682,51 @@ def pause_menu(scene, pars):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit = False
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                savedata = data[0].split(';')
+                savedata[1] = str(current_day)
+                savedata[2] = str(time1)
+                if scene == hse:
+                    savedata[3] = 'hse'
+                else:
+                    savedata[3] = 'home'
+                savedata[4] = str(pars[0])
+                savedata[5] = str(pars[1][0])
+                savedata[6] = str(pars[1][1])
+                savedata[7] = str(current_sleep)
+                savedata[8] = str(current_hunger)
+                savedata[9] = str(current_socialize)
+                savedata[10] = str(money_wallet)
+                data[0] = ';'.join(savedata)
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if backBtn.rect.collidepoint(event.pos):
                     scene(pars[0], pars[1], 'pause', pars[2])
                     exit = False
                 elif menuBtn.rect.collidepoint(event.pos):
+                    with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                        data = f.readlines()
+                    savedata = data[0].split(';')
+                    savedata[1] = str(current_day)
+                    savedata[2] = str(time1)
+                    if scene == hse:
+                        savedata[3] = 'hse'
+                    else:
+                        savedata[3] = 'home'
+                    savedata[4] = str(pars[0])
+                    savedata[5] = str(pars[1][0])
+                    savedata[6] = str(pars[1][1])
+                    savedata[7] = str(current_sleep)
+                    savedata[8] = str(current_hunger)
+                    savedata[9] = str(current_socialize)
+                    savedata[10] = str(money_wallet)
+                    data[0] = ';'.join(savedata)
+                    with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                        for line in data:
+                            f.writelines(line)
                     main_menu()
                     exit = False
                 elif schedulebutton.rect.collidepoint(event.pos):
@@ -1027,9 +1762,7 @@ def bit_late(scene, pars):
 
     while exit:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 if backBtn.rect.collidepoint(event.pos):
                     if 570 <= time1 <= 650:
                         minute = 10
@@ -1088,9 +1821,7 @@ def not_late(scene, pars):
 
     while exit:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 if backBtn.rect.collidepoint(event.pos):
                     if 570 <= time1 <= 650:
                         minute = 10
@@ -1127,6 +1858,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['09:30-10:50']]:
             if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
                 grades[dict_classes['09:30-10:50']].append(10)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['09:30-10:50']]] == '\n':
+                    data[dict_inds[dict_classes['09:30-10:50']]] = f'10\n'
+                else:
+                    data[dict_inds[dict_classes['09:30-10:50']]] = data[dict_inds[dict_classes['09:30-10:50']]][
+                                                                   :-1] + f',10\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('09:30-10:50')
                 not_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
@@ -1137,6 +1878,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['09:30-10:50']]:
             if dict_classes['09:30-10:50'] != 'Фонетика' and dict_classes['09:30-10:50'] != 'Введение в лингвистику':
                 grades[dict_classes['09:30-10:50']].append(6)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['09:30-10:50']]] == '\n':
+                    data[dict_inds[dict_classes['09:30-10:50']]] = f'6\n'
+                else:
+                    data[dict_inds[dict_classes['09:30-10:50']]] = data[dict_inds[dict_classes['09:30-10:50']]][
+                                                                   :-1] + f',6\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('09:30-10:50')
                 bit_late(scene, pars)
             elif dict_classes['09:30-10:50'] == 'Фонетика':
@@ -1148,6 +1899,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
             if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
                 grades[dict_classes['11:10-12:30']].append(10)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['11:10-12:30']]] == '\n':
+                    data[dict_inds[dict_classes['11:10-12:30']]] = f'10\n'
+                else:
+                    data[dict_inds[dict_classes['11:10-12:30']]] = data[dict_inds[dict_classes['11:10-12:30']]][
+                                                                   :-1] + f',10\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('11:10-12:30')
                 not_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
@@ -1158,6 +1919,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['11:10-12:30']]:
             if dict_classes['11:10-12:30'] != 'Фонетика' and dict_classes['11:10-12:30'] != 'Введение в лингвистику':
                 grades[dict_classes['11:10-12:30']].append(6)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['11:10-12:30']]] == '\n':
+                    data[dict_inds[dict_classes['11:10-12:30']]] = f'6\n'
+                else:
+                    data[dict_inds[dict_classes['11:10-12:30']]] = data[dict_inds[dict_classes['11:10-12:30']]][
+                                                                   :-1] + f',6\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('11:10-12:30')
                 bit_late(scene, pars)
             elif dict_classes['11:10-12:30'] == 'Фонетика':
@@ -1169,6 +1940,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
             if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
                 grades[dict_classes['13:00-14:20']].append(10)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['13:00-14:20']]] == '\n':
+                    data[dict_inds[dict_classes['13:00-14:20']]] = f'10\n'
+                else:
+                    data[dict_inds[dict_classes['13:00-14:20']]] = data[dict_inds[dict_classes['13:00-14:20']]][
+                                                                   :-1] + f',10\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('13:00-14:20')
                 not_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
@@ -1179,6 +1960,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['13:00-14:20']]:
             if dict_classes['13:00-14:20'] != 'Фонетика' and dict_classes['13:00-14:20'] != 'Введение в лингвистику':
                 grades[dict_classes['13:00-14:20']].append(6)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['13:00-14:20']]] == '\n':
+                    data[dict_inds[dict_classes['13:00-14:20']]] = f'6\n'
+                else:
+                    data[dict_inds[dict_classes['13:00-14:20']]] = data[dict_inds[dict_classes['13:00-14:20']]][
+                                                                   :-1] + f',6\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('13:00-14:20')
                 bit_late(scene, pars)
             elif dict_classes['13:00-14:20'] == 'Фонетика':
@@ -1190,6 +1981,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
             if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
                 grades[dict_classes['14:40-16:00']].append(10)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['14:40-16:00']]] == '\n':
+                    data[dict_inds[dict_classes['14:40-16:00']]] = f'10\n'
+                else:
+                    data[dict_inds[dict_classes['14:40-16:00']]] = data[dict_inds[dict_classes['14:40-16:00']]][
+                                                                   :-1] + f',10\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('14:40-16:00')
                 not_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
@@ -1200,6 +2001,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['14:40-16:00']]:
             if dict_classes['14:40-16:00'] != 'Фонетика' and dict_classes['14:40-16:00'] != 'Введение в лингвистику':
                 grades[dict_classes['14:40-16:00']].append(6)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['14:40-16:00']]] == '\n':
+                    data[dict_inds[dict_classes['14:40-16:00']]] = f'6\n'
+                else:
+                    data[dict_inds[dict_classes['14:40-16:00']]] = data[dict_inds[dict_classes['14:40-16:00']]][
+                                                                   :-1] + f',6\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('14:40-16:00')
                 bit_late(scene, pars)
             elif dict_classes['14:40-16:00'] == 'Фонетика':
@@ -1211,6 +2022,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
             if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
                 grades[dict_classes['16:20-17:40']].append(10)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['16:20-17:40']]] == '\n':
+                    data[dict_inds[dict_classes['16:20-17:40']]] = f'10\n'
+                else:
+                    data[dict_inds[dict_classes['16:20-17:40']]] = data[dict_inds[dict_classes['16:20-17:40']]][
+                                                                   :-1] + f',10\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('16:20-17:40')
                 not_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
@@ -1221,6 +2042,16 @@ def studying(scene, pars, curroom):
         if curroom == dict_rooms[dict_classes['16:20-17:40']]:
             if dict_classes['16:20-17:40'] != 'Фонетика' and dict_classes['16:20-17:40'] != 'Введение в лингвистику':
                 grades[dict_classes['16:20-17:40']].append(6)
+                with open(f'data/save{n}.dat', 'r', encoding='utf8') as f:
+                    data = f.readlines()
+                if data[dict_inds[dict_classes['16:20-17:40']]] == '\n':
+                    data[dict_inds[dict_classes['16:20-17:40']]] = f'6\n'
+                else:
+                    data[dict_inds[dict_classes['16:20-17:40']]] = data[dict_inds[dict_classes['16:20-17:40']]][
+                                                                   :-1] + f',6\n'
+                with open(f'data/save{n}.dat', 'w', encoding='utf8') as f:
+                    for line in data:
+                        f.writelines(line)
                 lessonsattended.append('16:20-17:40')
                 bit_late(scene, pars)
             elif dict_classes['16:20-17:40'] == 'Фонетика':
@@ -1288,7 +2119,7 @@ def studying(scene, pars, curroom):
                         second = 0
                         current_day = 0
                         current_module += 1
-                        home(pars[2])
+                        home(999, (0, 0), 'hse', pars[2])
             screen.blit(background, background_rect)
             screen.blit(text1, text1_rect)
             screen.blit(text2, text2_rect)
