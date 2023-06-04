@@ -221,7 +221,7 @@ def main(n, home):
                         for i in range(8):
                             f.write('\n')
 
-                    home(999, (0, 0), 'menu',)
+                    home(999, (0, 0), 'menu', n)
                 if arrow1.rect.collidepoint(event.pos):
                     currhair -= 1
                     if currhair >= 1:
